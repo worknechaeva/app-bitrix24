@@ -7,9 +7,7 @@ const input = {
   title: "Тестовая задача",
   responsibleId: "101",
   groupId: "77",
-  priority: "medium" as const,
   tags: ["technarost.ru"],
-  allowTimeTracking: true,
 };
 
 describe("MockBitrix24Client", () => {

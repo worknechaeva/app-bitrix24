@@ -8,8 +8,6 @@ const validInput = {
   responsibleId: "default",
   deadline: "",
   description: "",
-  priority: "default" as const,
-  estimateHours: "1,5",
   additionalTags: "контент, срочно",
   mockScenario: "success" as const,
 };
@@ -24,8 +22,14 @@ describe("taskFormSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("accepts only quarter-hour estimates", () => {
-    expect(taskFormSchema.safeParse({ ...validInput, estimateHours: "1,3" }).success).toBe(false);
-    expect(taskFormSchema.safeParse({ ...validInput, estimateHours: "1,25" }).success).toBe(true);
+  it("accepts an empty deadline and rejects an invalid date", () => {
+    expect(taskFormSchema.safeParse({ ...validInput, deadline: "" }).success).toBe(true);
+    expect(taskFormSchema.safeParse({ ...validInput, deadline: "сегодня" }).success).toBe(false);
+  });
+
+  it("does not contain removed task fields", () => {
+    expect(Object.keys(taskFormSchema.shape)).not.toEqual(
+      expect.arrayContaining(["priority", "estimateHours", "allowTimeTracking"]),
+    );
   });
 });
