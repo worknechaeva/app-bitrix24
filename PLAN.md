@@ -1,38 +1,42 @@
-# Task Launcher — coding milestone 1
+# Task Launcher — текущий план milestone
 
-**Status:** implemented and verified locally on 2026-07-20.
+**Статус:** базовый mock-сценарий реализован и проверен; документационный baseline создан; UX-исправления из QA-журнала еще не реализованы.
 
-## Goal
+Канонические границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md), действующее поведение — в [docs/product/current-scope.md](./docs/product/current-scope.md), открытые проблемы — в [docs/qa/findings.md](./docs/qa/findings.md).
 
-Deliver a runnable, adaptive PWA prototype with a development-only mock login and a complete mock task-creation flow. No external account or secret is required.
+## Цель текущего milestone
 
-## Deliverables
+Довести локальный mobile-first mock-сценарий до согласованного продуктового поведения без подключения Supabase и настоящего Bitrix24.
 
-- Next.js App Router project with strict TypeScript, Tailwind CSS, local UI primitives, ESLint, Prettier, Vitest, and Playwright.
-- Routes: `/login`, `/`, `/tasks/new`, `/submissions`, `/projects`, `/settings/bitrix24`, `/settings/users`, and `/install`.
-- Mobile-first application shell and Russian UI.
-- Server-only `Bitrix24Client` contract and deterministic mock implementation.
-- Task form with required project/title fields, optional parameters, idempotency protection, success, error, and unknown-timeout states.
-- PWA manifest, application icons, environment validation, fixtures, tests, CI, and setup documentation.
+## Уже готово
 
-## Out of scope
+- Next.js App Router, strict TypeScript, Tailwind CSS и локальные UI-компоненты.
+- Dev-only mock-вход администратора и редактора.
+- Адаптивный app shell и основные маршруты.
+- Server-only контракт `Bitrix24Client` и mock-адаптер.
+- Создание mock-задачи, базовая idempotency, success/error/unknown состояния.
+- PWA manifest и иконки.
+- Vitest, Playwright и GitHub Actions.
+- Каноническая продуктовая, архитектурная, QA- и roadmap-документация.
 
-- Real Supabase sessions, database migrations, RLS, and user provisioning.
-- Real Bitrix24 webhook calls and persistence across server restarts.
-- Vercel deployment, custom domain, offline task creation, push notifications, and later product stages.
+## Следующая пачка реализации
 
-## Acceptance checks
+- исправить открытые UX-проблемы из `docs/qa/findings.md`;
+- удалить устаревшие поля приоритета, оценки и управления учетом времени;
+- добавить безопасный ручной повтор после timeout;
+- добавить mock-выбор файлов и безопасные метаданные;
+- добавить доменные статусы и фильтр истории;
+- добавить mock `ProjectRepository` и административный CRUD проектов;
+- добавить регрессионные тесты и только после них переводить QA-записи в `Fixed`.
 
-- A developer can run the project using only the documented local commands.
-- Mock admin and editor personas can enter the protected interface in development.
-- A valid task is created once per idempotency key and returns a confirmation with a mock Bitrix24 ID.
-- Error and timeout fixtures produce safe, understandable messages.
-- Desktop, iPhone, and Android Playwright smoke flows pass.
-- Lint, typecheck, unit tests, E2E tests, and production build pass.
+## Не входит в текущий milestone
 
-## Verification record
+- Supabase Auth, Postgres и RLS;
+- production-авторизация и постоянное хранение;
+- live Bitrix24 webhook, загрузка файлов и синхронизация статусов;
+- Vercel deployment;
+- offline, push, аналитика, AI и несколько порталов.
 
-- ESLint and strict TypeScript pass without warnings or errors.
-- Vitest covers schema validation, the mock adapter, default mapping, errors, timeout, and duplicate idempotency keys.
-- Playwright passes in desktop Chromium, iPhone WebKit, and Android Chromium.
-- Next.js production build completes with all milestone routes and the generated manifest.
+## Проверка
+
+После каждой пачки кода выполняются format check, lint, typecheck, unit/integration tests, Playwright E2E и production build. Документационная задача проверяется отдельно на ссылки, непротиворечивость, форматирование и чистоту diff.

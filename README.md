@@ -2,6 +2,8 @@
 
 Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализует полностью локальный mock-сценарий: разработчику не нужны Supabase, Vercel, webhook или другие внешние ресурсы.
 
+Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
+
 ## Что уже работает
 
 - закрытый dev-only вход под mock-администратором или редактором;
@@ -72,7 +74,7 @@ tests/
   e2e/                         desktop/iPhone/Android smoke flows
 ```
 
-Архитектурные рамки milestone описаны в [PLAN.md](./PLAN.md), правила работы с репозиторием — в [AGENTS.md](./AGENTS.md).
+Краткий план milestone описан в [PLAN.md](./PLAN.md), устойчивые технические границы — в [docs/architecture.md](./docs/architecture.md), правила работы с репозиторием — в [AGENTS.md](./AGENTS.md).
 
 ## Environment и секреты
 
@@ -87,6 +89,6 @@ BITRIX24_MODE=mock
 
 Mock-вход и mock-интеграция доступны только в development. Production-сборка показывает закрытый экран входа и не выполняет mock-мутации.
 
-## Что не входит в milestone 1
+## Что пока не подключено
 
-Supabase Auth/Postgres/RLS, постоянное хранение истории, реальный Bitrix24 REST, управление реальными пользователями и проектами, Vercel deployment, service worker и офлайн-создание задач будут добавляться в следующих milestones.
+Supabase Auth/Postgres/RLS, постоянное хранение, реальный Bitrix24 REST, live-статусы, реальная загрузка файлов, Vercel deployment, service worker и офлайн-создание задач будут добавляться в следующих milestones. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).

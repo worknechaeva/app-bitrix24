@@ -1,26 +1,49 @@
 # Task Launcher development guide
 
-## Product scope
+## Обязательный контекст
 
-Task Launcher is a Russian-language, mobile-first PWA for quickly creating tasks in a single cloud Bitrix24 portal. Keep the first milestone self-contained and runnable without Supabase, Vercel, or a real Bitrix24 webhook.
+Перед любой задачей полностью прочитать:
 
-## Engineering rules
+1. [docs/README.md](./docs/README.md);
+2. [docs/product/current-scope.md](./docs/product/current-scope.md);
+3. [docs/product/decisions.md](./docs/product/decisions.md);
+4. [docs/architecture.md](./docs/architecture.md);
+5. [docs/roadmap.md](./docs/roadmap.md);
+6. все открытые записи [docs/qa/findings.md](./docs/qa/findings.md).
 
-- Use Next.js App Router, React, strict TypeScript, Tailwind CSS, and shadcn/ui-style local components.
-- Keep Bitrix24 access server-only behind `src/integrations/bitrix24/Bitrix24Client`.
-- Never commit credentials or expose webhook values through `NEXT_PUBLIC_*`, UI errors, fixtures, logs, or documentation.
-- Keep mock authentication and mock Bitrix24 behavior unavailable in production.
-- Write all user-facing copy in Russian and use `е` instead of `ё`.
-- Prefer Server Components; add Client Components only for interactive UI.
-- Validate external and form inputs with Zod.
-- Keep touch targets at least 44 px and preserve keyboard and screen-reader accessibility.
-- Do not add offline task submission, analytics, imports, AI features, or multi-portal support in this milestone.
+Приоритет внутренних источников требований:
 
-## Required checks
+1. последний явный запрос пользователя;
+2. `docs/product/current-scope.md`;
+3. решения со статусом `Active` в `docs/product/decisions.md`;
+4. `docs/architecture.md`;
+5. `docs/roadmap.md`;
+6. исторические и закрытые QA-записи.
 
-Run before handoff:
+Решения со статусом `Superseded` не действуют.
+
+## Правила изменений
+
+- Не возвращать удаленные поля или функции без нового явного решения пользователя.
+- При изменении поведения приложения обязательно:
+  - обновить `docs/product/current-scope.md`;
+  - добавить или изменить решение в `docs/product/decisions.md`, если меняется продуктовое решение;
+  - обновить статус связанной записи `docs/qa/findings.md`;
+  - добавить регрессионный тест;
+  - обновить `docs/roadmap.md`, если меняются границы milestone.
+- Перед завершением задачи проверить соответствие документации коду.
+- Следовать техническим границам из [docs/architecture.md](./docs/architecture.md).
+- Пользовательские тексты писать на русском языке с буквой `е` вместо `ё`.
+- Не хранить секреты в документации, Git, fixtures, frontend bundle, логах и пользовательских ошибках.
+- Не изменять и не переписывать старые коммиты.
+- Не выполнять push, создание PR или merge без явного разрешения пользователя.
+
+## Проверки
+
+Перед передачей изменений выполнить применимые проверки:
 
 ```bash
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
