@@ -1,6 +1,6 @@
 "use client";
 
-import { Paperclip, Trash2 } from "lucide-react";
+import { Paperclip, Plus, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,7 +65,7 @@ export function FilePicker({ files, onChange, serverError }: FilePickerProps) {
         />
       </div>
       <p id="task-files-hint" className="text-muted-foreground mt-1 text-xs">
-        Изображения, PDF и офисные документы. До 20 МБ на файл.
+        Изображения, PDF и офисные документы. До 20 МБ на файл, не более {MAX_TASK_FILES} файлов.
       </p>
       {error || serverError ? (
         <p id="task-files-error" className="text-destructive mt-2 text-sm" role="alert">
@@ -73,37 +73,54 @@ export function FilePicker({ files, onChange, serverError }: FilePickerProps) {
         </p>
       ) : null}
       {files.length ? (
-        <ul className="mt-3 max-w-full min-w-0 space-y-2" aria-label="Выбранные файлы">
-          {files.map((file, index) => (
-            <li
-              key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-              className="bg-muted/60 flex min-h-12 max-w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2"
-              data-testid="selected-file"
-            >
-              <Paperclip className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1 overflow-hidden">
-                <span
-                  className="block max-w-full truncate text-sm font-medium"
-                  data-testid="selected-file-name"
-                  title={file.name}
-                >
-                  {file.name}
-                </span>
-                <span className="text-muted-foreground block text-xs">{formatFileSize(file.size)}</span>
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="size-11 shrink-0"
-                onClick={() => removeFile(index)}
-                aria-label={`Удалить файл ${file.name}`}
+        <>
+          <ul className="mt-3 max-w-full min-w-0 space-y-2" aria-label="Выбранные файлы">
+            {files.map((file, index) => (
+              <li
+                key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+                className="bg-muted/60 flex min-h-12 max-w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2"
+                data-testid="selected-file"
               >
-                <Trash2 className="size-4" aria-hidden="true" />
-              </Button>
-            </li>
-          ))}
-        </ul>
+                <Paperclip className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 flex-1 overflow-hidden">
+                  <span
+                    className="block max-w-full truncate text-sm font-medium"
+                    data-testid="selected-file-name"
+                    title={file.name}
+                  >
+                    {file.name}
+                  </span>
+                  <span className="text-muted-foreground block text-xs">{formatFileSize(file.size)}</span>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-11 shrink-0"
+                  onClick={() => removeFile(index)}
+                  aria-label={`Удалить файл ${file.name}`}
+                >
+                  <Trash2 className="size-4" aria-hidden="true" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+          {files.length < MAX_TASK_FILES ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3 min-h-11 w-full"
+              onClick={() => inputRef.current?.click()}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Добавить еще файлы
+            </Button>
+          ) : (
+            <p className="text-muted-foreground mt-3 text-sm" role="status">
+              Достигнут лимит: {MAX_TASK_FILES} файлов
+            </p>
+          )}
+        </>
       ) : null}
     </div>
   );

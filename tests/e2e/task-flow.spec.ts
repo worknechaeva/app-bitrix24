@@ -72,6 +72,66 @@ test("removed fields stay absent and a file can be added and removed", async ({ 
   await expect(page.getByText("brief.pdf", { exact: true })).toHaveCount(0);
 });
 
+test("user explicitly adds more files without replacing the selected ones", async ({ page }) => {
+  await login(page);
+  await selectProject(page);
+  await page.getByLabel("Название задачи *").fill("Задача с несколькими файлами");
+  await openAdditionalParameters(page);
+  const input = page.getByLabel("Прикрепить файлы");
+
+  await input.setInputFiles({
+    name: "first.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("first file"),
+  });
+  const addMoreButton = page.getByRole("button", { name: "Добавить еще файлы" });
+  await expect(addMoreButton).toBeVisible();
+
+  let fileChooserPromise = page.waitForEvent("filechooser");
+  await addMoreButton.click();
+  let fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: "second.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("second file"),
+  });
+  await expect(page.getByTestId("selected-file")).toHaveCount(2);
+  await expect(page.getByText("first.pdf", { exact: true })).toBeVisible();
+  await expect(page.getByText("second.pdf", { exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Удалить файл first.pdf" }).click();
+  await expect(page.getByText("first.pdf", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("second.pdf", { exact: true })).toBeVisible();
+
+  fileChooserPromise = page.waitForEvent("filechooser");
+  await addMoreButton.click();
+  fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
+    name: "third.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("third file"),
+  });
+  await expect(page.getByTestId("selected-file")).toHaveCount(2);
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
+});
+
+test("file picker explains when the ten-file limit is reached", async ({ page }) => {
+  await login(page);
+  await openAdditionalParameters(page);
+  await page.getByLabel("Прикрепить файлы").setInputFiles(
+    Array.from({ length: 10 }, (_, index) => ({
+      name: `file-${index + 1}.pdf`,
+      mimeType: "application/pdf",
+      buffer: Buffer.from(`file ${index + 1}`),
+    })),
+  );
+
+  await expect(page.getByTestId("selected-file")).toHaveCount(10);
+  await expect(page.getByText("Достигнут лимит: 10 файлов", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Добавить еще файлы" })).toHaveCount(0);
+});
+
 test("long file name stays contained and a multi-megabyte mock file submits", async ({ page }) => {
   const longFileName = `${"Инструкция-по-заполнению-нового-шаблона-".repeat(5)}детали.pdf`;
 
