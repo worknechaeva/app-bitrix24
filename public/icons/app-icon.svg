@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Task Launcher">
+  <rect width="512" height="512" rx="112" fill="#176b52"/>
+  <path d="M144 130h174c28 0 50 22 50 50v152c0 28-22 50-50 50H194c-28 0-50-22-50-50V130Z" fill="#fff" opacity=".98"/>
+  <path d="M198 222l35 35 78-79" fill="none" stroke="#176b52" stroke-linecap="round" stroke-linejoin="round" stroke-width="30"/>
+  <path d="M208 316h96" fill="none" stroke="#9ac7b7" stroke-linecap="round" stroke-width="22"/>
+  <circle cx="366" cy="146" r="55" fill="#d7f3e9"/>
+  <path d="M340 146h52M366 120v52" stroke="#176b52" stroke-linecap="round" stroke-width="18"/>
+</svg>
