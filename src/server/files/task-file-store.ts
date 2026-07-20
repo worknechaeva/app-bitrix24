@@ -4,6 +4,7 @@ import {
   isSupportedTaskFile,
   MAX_TASK_FILES,
   MAX_TASK_FILE_SIZE_BYTES,
+  taskFileMetadataInputSchema,
   taskFileMetadataSchema,
   type TaskFileMetadata,
 } from "@/features/tasks/files";
@@ -16,23 +17,27 @@ export class TaskFileValidationError extends Error {
 }
 
 export interface TaskFileStore {
-  prepare(files: readonly File[]): Promise<TaskFileMetadata[]>;
+  prepare(files: readonly unknown[]): Promise<TaskFileMetadata[]>;
 }
 
 export class MockTaskFileStore implements TaskFileStore {
-  async prepare(files: readonly File[]) {
+  async prepare(files: readonly unknown[]) {
     if (files.length > MAX_TASK_FILES) {
       throw new TaskFileValidationError(`Можно прикрепить не более ${MAX_TASK_FILES} файлов`);
     }
 
     return files.map((file) => {
-      if (file.size > MAX_TASK_FILE_SIZE_BYTES) {
-        throw new TaskFileValidationError(`Файл «${file.name}» больше 20 МБ`);
+      const parsed = taskFileMetadataInputSchema.safeParse(file);
+      if (!parsed.success) {
+        throw new TaskFileValidationError("Некорректные данные файла");
       }
-      if (!isSupportedTaskFile(file)) {
-        throw new TaskFileValidationError(`Формат файла «${file.name}» не поддерживается`);
+      if (parsed.data.size > MAX_TASK_FILE_SIZE_BYTES) {
+        throw new TaskFileValidationError(`Файл «${parsed.data.name}» больше 20 МБ`);
       }
-      return taskFileMetadataSchema.parse({ name: file.name, size: file.size, type: file.type });
+      if (!isSupportedTaskFile(parsed.data)) {
+        throw new TaskFileValidationError(`Формат файла «${parsed.data.name}» не поддерживается`);
+      }
+      return taskFileMetadataSchema.parse(parsed.data);
     });
   }
 }

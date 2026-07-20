@@ -86,7 +86,9 @@ export function TaskForm({
       }
       const formData = new FormData();
       for (const [key, value] of Object.entries(attemptValues)) formData.set(key, value);
-      for (const file of files) formData.append("files", file);
+      for (const file of files) {
+        formData.append("files", JSON.stringify({ name: file.name, size: file.size, type: file.type }));
+      }
       const result = await createTaskAction(formData);
       setOutcome(result);
       if (result.status === "error" && result.fieldErrors) {
@@ -256,7 +258,7 @@ export function TaskForm({
             aria-hidden="true"
           />
         </summary>
-        <div className="border-border grid gap-5 border-t p-5 sm:grid-cols-2">
+        <div className="border-border grid min-w-0 gap-5 border-t p-5 sm:grid-cols-2">
           <div>
             <Label htmlFor="responsible">Ответственный</Label>
             <Select value={responsibleId} onValueChange={(value) => form.setValue("responsibleId", value)}>
@@ -308,7 +310,7 @@ export function TaskForm({
             />
             <FieldError message={form.formState.errors.description?.message} />
           </div>
-          <div className="sm:col-span-2">
+          <div className="min-w-0 sm:col-span-2">
             <FilePicker files={files} onChange={setFiles} serverError={fileError} />
           </div>
           <div className="sm:col-span-2">

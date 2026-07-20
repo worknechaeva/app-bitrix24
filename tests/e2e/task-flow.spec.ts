@@ -72,6 +72,35 @@ test("removed fields stay absent and a file can be added and removed", async ({ 
   await expect(page.getByText("brief.pdf", { exact: true })).toHaveCount(0);
 });
 
+test("long file name stays contained and a multi-megabyte mock file submits", async ({ page }) => {
+  const longFileName = `${"Инструкция-по-заполнению-нового-шаблона-".repeat(5)}детали.pdf`;
+
+  await login(page);
+  await selectProject(page);
+  await page.getByLabel("Название задачи *").fill("Проверить прикрепленный файл");
+  await openAdditionalParameters(page);
+  await page.getByLabel("Прикрепить файлы").setInputFiles({
+    name: longFileName,
+    mimeType: "application/pdf",
+    buffer: Buffer.alloc(3_100_000, "a"),
+  });
+
+  const selectedFile = page.getByTestId("selected-file");
+  await expect(page.getByTestId("selected-file-name")).toHaveAttribute("title", longFileName);
+  await expect(selectedFile).toBeVisible();
+  const viewport = page.viewportSize();
+  const selectedFileBox = await selectedFile.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(selectedFileBox).not.toBeNull();
+  expect(selectedFileBox!.x + selectedFileBox!.width).toBeLessThanOrEqual(viewport!.width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+    viewport!.width,
+  );
+
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
+});
+
 test("timeout allows an explicit retry with a new attempt", async ({ page }) => {
   await login(page);
   await selectProject(page);

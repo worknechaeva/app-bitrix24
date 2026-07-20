@@ -7,9 +7,12 @@ import { taskCreateRequestSchema } from "./schema";
 
 export async function createTaskAction(formData: FormData): Promise<CreateTaskOutcome> {
   await requireMockSession();
-  const files = formData.getAll("files").filter((value): value is File => value instanceof File);
   let metadata;
   try {
+    const files = formData.getAll("files").map((value) => {
+      if (typeof value !== "string") throw new TaskFileValidationError("Некорректные данные файла");
+      return JSON.parse(value) as unknown;
+    });
     metadata = await taskFileStore.prepare(files);
   } catch (error) {
     if (error instanceof TaskFileValidationError) {

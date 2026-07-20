@@ -50,16 +50,16 @@ export function FilePicker({ files, onChange, serverError }: FilePickerProps) {
   }
 
   return (
-    <div>
+    <div className="max-w-full min-w-0">
       <Label htmlFor="task-files">Прикрепить файлы</Label>
-      <div className="mt-2">
+      <div className="mt-2 max-w-full min-w-0">
         <Input
           ref={inputRef}
           id="task-files"
           type="file"
           multiple
           accept={TASK_FILE_ACCEPT}
-          className="min-h-12 cursor-pointer file:mr-3 file:font-medium"
+          className="min-h-12 w-full max-w-full min-w-0 cursor-pointer overflow-hidden file:mr-3 file:font-medium"
           onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
           aria-describedby="task-files-hint task-files-error"
         />
@@ -73,15 +73,22 @@ export function FilePicker({ files, onChange, serverError }: FilePickerProps) {
         </p>
       ) : null}
       {files.length ? (
-        <ul className="mt-3 space-y-2" aria-label="Выбранные файлы">
+        <ul className="mt-3 max-w-full min-w-0 space-y-2" aria-label="Выбранные файлы">
           {files.map((file, index) => (
             <li
               key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-              className="bg-muted/60 flex min-h-12 items-center gap-3 rounded-xl px-3 py-2"
+              className="bg-muted/60 flex min-h-12 max-w-full min-w-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2"
+              data-testid="selected-file"
             >
               <Paperclip className="text-muted-foreground size-4 shrink-0" aria-hidden="true" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium">{file.name}</span>
+              <span className="min-w-0 flex-1 overflow-hidden">
+                <span
+                  className="block max-w-full truncate text-sm font-medium"
+                  data-testid="selected-file-name"
+                  title={file.name}
+                >
+                  {file.name}
+                </span>
                 <span className="text-muted-foreground block text-xs">{formatFileSize(file.size)}</span>
               </span>
               <Button

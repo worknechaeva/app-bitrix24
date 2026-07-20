@@ -4,10 +4,14 @@ export const MAX_TASK_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 export const MAX_TASK_FILES = 10;
 export const TASK_FILE_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.rtf,.txt";
 
-export const taskFileMetadataSchema = z.object({
+export const taskFileMetadataInputSchema = z.object({
   name: z.string().min(1).max(255),
-  size: z.number().int().nonnegative().max(MAX_TASK_FILE_SIZE_BYTES),
+  size: z.number().int().nonnegative(),
   type: z.string().max(160),
+});
+
+export const taskFileMetadataSchema = taskFileMetadataInputSchema.extend({
+  size: z.number().int().nonnegative().max(MAX_TASK_FILE_SIZE_BYTES),
 });
 
 export type TaskFileMetadata = z.infer<typeof taskFileMetadataSchema>;
