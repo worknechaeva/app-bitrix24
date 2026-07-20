@@ -13,10 +13,10 @@
 - **Фактический результат:** часть кнопки «Главная» перекрыта плавающим элементом.
 - **Ожидаемый результат:** все пункты навигации полностью видимы и имеют доступную область нажатия.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-001.
-- **Связанный тест:** требуется mobile E2E на отсутствие перекрытия навигации.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `mobile user menu does not overlap stable bottom navigation`.
+- **Коммит исправления:** `e222a54`; dev-overlay закрыт в `036200b`.
 
 ## QA-002 — Ссылка «Все» в последних задачах плохо выровнена
 
@@ -29,10 +29,10 @@
 - **Фактический результат:** короткая ссылка находится внутри содержимого блока и выглядит как отдельный случайный элемент.
 - **Ожидаемый результат:** ссылка «Все задачи» выровнена в заголовке блока последних задач.
 - **Приоритет:** Medium
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** действующий scope главной страницы.
-- **Связанный тест:** требуется component/E2E-проверка заголовка блока.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `dashboard has no greeting and keeps the all-tasks link aligned`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-003 — Недавний проект не выбирается в форме
 
@@ -45,10 +45,10 @@
 - **Фактический результат:** открывается форма с проектом «Технарост» по умолчанию.
 - **Ожидаемый результат:** открывается форма с выбранным проектом «Форма».
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-004.
-- **Связанный тест:** требуется E2E перехода из карточки недавнего проекта.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `recent project opens a form with that project selected`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-004 — Лишнее приветствие «Добрый день»
 
@@ -61,10 +61,10 @@
 - **Фактический результат:** над главным заголовком показано «Добрый день».
 - **Ожидаемый результат:** приветствие отсутствует.
 - **Приоритет:** Low
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** действующий scope главной страницы.
-- **Связанный тест:** требуется component-тест отсутствия приветствия.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `dashboard has no greeting and keeps the all-tasks link aligned`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-005 — Поле «Приоритет» не соответствует процессу Bitrix24
 
@@ -77,10 +77,10 @@
 - **Фактический результат:** отображается поле «Приоритет».
 - **Ожидаемый результат:** поля нет в UI, форме, DTO и project defaults.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-006, DEC-008; DEC-015 superseded.
-- **Связанный тест:** требуется schema/component/integration regression test.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/task-schema.test.ts` — `does not contain removed task fields`; `tests/e2e/task-flow.spec.ts` — `removed fields stay absent and a file can be added and removed`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-006 — Срок в Safari заполняется и не очищается
 
@@ -93,10 +93,10 @@
 - **Фактический результат:** поле сохраняет или восстанавливает дату.
 - **Ожидаемый результат:** поле пустое по умолчанию, очищается, пустое значение не отправляется.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-005.
-- **Связанный тест:** требуется WebKit E2E выбора и очистки срока плюс mapper unit test.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `deadline starts empty, can be selected and cleared`; `tests/integration/create-task.test.ts` — `omits an empty deadline and keeps only safe file metadata`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-007 — История перегружена повторяющимися иконками
 
@@ -109,10 +109,10 @@
 - **Фактический результат:** каждая запись начинается с отдельного круглого значка.
 - **Ожидаемый результат:** компактный список без повторяющейся декоративной иконки.
 - **Приоритет:** Medium
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** действующий scope истории.
-- **Связанный тест:** требуется visual/component regression test компактной строки.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `history is compact, has domain statuses and filters by project`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-008 — В истории жестко указан статус «Создано»
 
@@ -125,10 +125,10 @@
 - **Фактический результат:** статус всегда отображается как «Создана».
 - **Ожидаемый результат:** отображается локализованный доменный статус `new`, `in_progress`, `completed` или `unknown`.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-010, DEC-011; DEC-017 superseded.
-- **Связанный тест:** требуется unit-тест mapper статуса и component-тест истории.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/task-status.test.ts` — `maps known external values to internal statuses`; `tests/e2e/task-flow.spec.ts` — `history is compact, has domain statuses and filters by project`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-009 — Нет фильтра истории по проекту
 
@@ -141,10 +141,10 @@
 - **Фактический результат:** отображаются все записи без элемента фильтрации.
 - **Ожидаемый результат:** пользователь может выбрать проект и увидеть соответствующие записи.
 - **Приоритет:** Medium
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** действующий scope истории.
-- **Связанный тест:** требуется component/E2E-тест фильтра проекта.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `history is compact, has domain statuses and filters by project`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-010 — Нет полноценного управления проектами
 
@@ -157,10 +157,10 @@
 - **Фактический результат:** доступны только карточки и внешние ссылки.
 - **Ожидаемый результат:** администратор создает, редактирует, включает и выключает mock-проекты; редактор не имеет мутаций.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-012, DEC-014.
-- **Связанный тест:** требуется repository/unit, role/component и admin/editor E2E.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/project-repository.test.ts` — `creates, updates and toggles a project`; `tests/e2e/task-flow.spec.ts` — `administrator can create and edit a mock project` и `editor cannot manage projects`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-011 — Лишняя настройка учета времени
 
@@ -173,10 +173,10 @@
 - **Фактический результат:** отображается «Учет времени», в payload существует `allowTimeTracking`.
 - **Ожидаемый результат:** настройка отсутствует в UI, модели и payload.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-006, DEC-007; DEC-016 superseded.
-- **Связанный тест:** требуется schema/contract/component regression test.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/task-schema.test.ts` — `does not contain removed task fields`; `tests/integration/create-task.test.ts` — `omits an empty deadline and keeps only safe file metadata`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-012 — Лишнее поле оценки в часах
 
@@ -189,10 +189,10 @@
 - **Фактический результат:** отображается поле «Оценка, часов», значение переводится в секунды.
 - **Ожидаемый результат:** поле и соответствующий mapper отсутствуют.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-006, DEC-008; DEC-016 и DEC-018 superseded.
-- **Связанный тест:** требуется schema/component/integration regression test.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/task-schema.test.ts` — `does not contain removed task fields`; `tests/e2e/task-flow.spec.ts` — `removed fields stay absent and a file can be added and removed`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-013 — После mock-timeout форма больше не отправляется
 
@@ -205,10 +205,10 @@
 - **Фактический результат:** новая операция не создается.
 - **Ожидаемый результат:** автоматического повтора нет, но явная ручная попытка получает новый idempotency key.
 - **Приоритет:** Critical
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-013; DEC-019 superseded.
-- **Связанный тест:** требуется integration/E2E-тест timeout и ручного повтора с новым ключом.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/integration/create-task.test.ts` — `allows a conscious retry with a new idempotency key`; `tests/e2e/task-flow.spec.ts` — `timeout allows an explicit retry with a new attempt`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-014 — Нет прикрепления файлов
 
@@ -221,10 +221,10 @@
 - **Фактический результат:** файл выбрать нельзя.
 - **Ожидаемый результат:** пользователь выбирает файлы, а mock сохраняет только безопасные метаданные.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-008, DEC-009, DEC-014.
-- **Связанный тест:** требуется component/E2E выбора файла и unit-тест sanitized metadata.
-- **Коммит исправления:** —
+- **Связанный тест:** `tests/unit/task-file-store.test.ts` — `returns safe metadata without file contents`; `tests/integration/create-task.test.ts` — `omits an empty deadline and keeps only safe file metadata`; `tests/e2e/task-flow.spec.ts` — `removed fields stay absent and a file can be added and removed`.
+- **Коммит исправления:** `e222a54`.
 
 ## QA-015 — Кнопка отправки была доступна до завершения hydration
 
@@ -242,21 +242,6 @@
 - **Связанный тест:** `tests/e2e/task-flow.spec.ts` — `mock user creates a task without duplicate submission`.
 - **Коммит исправления:** `880b3e6`.
 
-## Карта кода для следующей задачи
+## Итог проверки пачки
 
-Аудит выполнен 2026-07-20. Это список мест, связанных с открытыми QA-записями; на документационном шаге код не изменялся.
-
-- `src/app/(protected)/page.tsx` — QA-002, QA-003, QA-004: заголовок последних задач, переход с проектом, удаление приветствия.
-- `src/app/(protected)/tasks/new/page.tsx` — QA-003: чтение и серверная проверка выбранного проекта из URL.
-- `src/components/app-shell/app-shell.tsx` и `src/components/app-shell/navigation.tsx` — QA-001: безопасная мобильная навигация.
-- `src/features/tasks/task-form.tsx` — QA-003, QA-005, QA-006, QA-011, QA-012, QA-013, QA-014: initial project, срок, состав полей, timeout retry и файлы.
-- `src/features/tasks/schema.ts` — QA-005, QA-006, QA-012, QA-014: удаление устаревших полей и схема безопасных метаданных.
-- `src/features/tasks/actions.ts` — QA-013, QA-014: новая ручная попытка и серверная обработка файлов.
-- `src/integrations/bitrix24/contracts.ts` — QA-005, QA-011, QA-012, QA-014: очистка DTO и серверная файловая абстракция.
-- `src/server/fixtures.ts` — QA-005, QA-008, QA-010, QA-011: модель проекта, доменные статусы и mock-данные.
-- `src/server/services/create-task.ts` — QA-005, QA-006, QA-008, QA-011, QA-012, QA-013, QA-014: mapper, статусы, timeout и sanitized file metadata.
-- `src/app/(protected)/submissions/page.tsx` — QA-007, QA-008, QA-009: компактный список, доменный статус и фильтр.
-- `src/app/(protected)/projects/page.tsx` — QA-010, QA-011: admin-only CRUD и удаление настройки учета времени.
-- `src/server/auth/mock-session.ts` — QA-010: серверная проверка административных мутаций.
-- `tests/unit/task-schema.test.ts`, `tests/unit/mock-client.test.ts`, `tests/integration/create-task.test.ts` и `tests/e2e/task-flow.spec.ts` — регрессионное покрытие всех измененных контрактов и сценариев.
-- Новые mock-репозитории проектов и файлов следует разместить под `src/server/repositories/` с интерфейсами, не зависящими от Supabase.
+QA-001–014 исправлены в `e222a54` и связаны с regression-тестами выше. QA-015 остается ранее закрытой записью. Открытых QA-наблюдений по текущей пачке нет; новые результаты ручной проверки следует добавлять отдельными записями, не изменяя историю закрытых требований.

@@ -24,7 +24,7 @@ UI -> server action/use case -> repository/integration interface -> mock или 
 ## Проекты и хранение
 
 - Доступ к проектам проходит через `ProjectRepository`.
-- Mock-реализация `ProjectRepository` входит в текущий milestone; ее отсутствие в исходном foundation зафиксировано в QA-010.
+- Mock-реализация `ProjectRepository` входит в текущий milestone и проверена regression-тестами QA-010.
 - Будущая Supabase-реализация подключается без изменения UI и use cases.
 - Supabase Auth, Postgres, RLS и постоянное хранение входят в отдельный milestone.
 
@@ -34,7 +34,7 @@ UI -> server action/use case -> repository/integration interface -> mock или 
 - Значения Bitrix24 преобразуются во внутренний доменный статус `new`, `in_progress`, `completed` или `unknown`.
 - UI отображает локализованное представление доменного статуса и не использует REST-константы напрямую.
 - Live-синхронизация статусов добавляется вместе с Bitrix24-адаптером.
-- Переход foundation с технических статусов на доменную модель отслеживается в QA-008.
+- Переход foundation с технических статусов на доменную модель выполнен в QA-008.
 
 ## Файлы
 
@@ -42,7 +42,7 @@ UI -> server action/use case -> repository/integration interface -> mock или 
 - Mock-реализация сохраняет только безопасные метаданные файла.
 - Бинарные данные не попадают в sanitized payload, историю операций и логи.
 - Live-адаптер загрузки в Bitrix24 добавляется в интеграционном milestone.
-- Отсутствующий в foundation интерфейс выбора файлов отслеживается в QA-014.
+- Интерфейс выбора файлов и mock-граница безопасных метаданных добавлены в QA-014.
 
 ## Безопасность
 
