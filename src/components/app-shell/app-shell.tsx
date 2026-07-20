@@ -3,6 +3,7 @@ import { LogOut, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DesktopNavigation, MobileNavigation } from "./navigation";
+import { MobileUserMenu } from "./mobile-user-menu";
 import { logoutMock } from "@/server/auth/mock-session";
 
 type AppShellProps = {
@@ -47,10 +48,10 @@ export function AppShell({ user, children }: AppShellProps) {
           </span>
           Task Launcher
         </Link>
-        <Badge variant="secondary">{user.role === "admin" ? "Админ" : "Редактор"}</Badge>
+        <MobileUserMenu user={user} logoutAction={logoutMock} />
       </header>
 
-      <main className="mx-auto min-h-svh max-w-6xl px-4 py-6 pb-24 md:ml-64 md:px-8 md:py-10 md:pb-10">
+      <main className="mx-auto min-h-svh max-w-6xl px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:ml-64 md:px-8 md:py-10 md:pb-10">
         {children}
       </main>
       <MobileNavigation />

@@ -1,5 +1,3 @@
-export type TaskPriority = "low" | "medium" | "high";
-
 export type ConnectionStatus = {
   connected: boolean;
   mode: "mock" | "live";
@@ -27,10 +25,7 @@ export type CreateBitrixTaskInput = {
   responsibleId: string;
   groupId: string;
   deadline?: string;
-  priority: TaskPriority;
-  estimateSeconds?: number;
   tags: string[];
-  allowTimeTracking: boolean;
 };
 
 export type CreateBitrixTaskResult = {

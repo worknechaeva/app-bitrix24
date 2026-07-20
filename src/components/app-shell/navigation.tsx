@@ -50,9 +50,10 @@ export function MobileNavigation() {
   return (
     <nav
       aria-label="Мобильная навигация"
-      className="bg-background/95 border-border fixed inset-x-0 bottom-0 z-40 border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      data-testid="mobile-navigation"
+      className="bg-background/95 border-border fixed inset-x-0 bottom-0 z-40 h-[calc(4rem+env(safe-area-inset-bottom))] border-t pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      <div className="mx-auto grid max-w-lg grid-cols-4 px-2">
+      <div className="mx-auto grid h-16 max-w-lg grid-cols-4 px-2">
         {primaryItems.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
@@ -61,7 +62,7 @@ export function MobileNavigation() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex min-h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium",
+                "flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 text-[11px] font-medium",
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >

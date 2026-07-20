@@ -1,7 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, CheckCircle2, ChevronDown, Clock3, ExternalLink, Loader2, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
+  Loader2,
+  Plus,
+  RotateCcw,
+} from "lucide-react";
 import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -14,8 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { createTaskAction } from "./actions";
 import { taskFormSchema, type TaskFormValues } from "./schema";
+import { FilePicker } from "./file-picker";
 import type { CreateTaskOutcome } from "@/server/services/create-task";
-import type { Project } from "@/server/fixtures";
+import type { Project } from "@/features/projects/schema";
 
 type Employee = { id: string; name: string; position: string; active: boolean };
 
@@ -31,26 +41,28 @@ export function TaskForm({
   projects,
   employees,
   idempotencyKey,
+  initialProjectId,
   showMockControls,
 }: {
   projects: Project[];
   employees: readonly Employee[];
   idempotencyKey: string;
+  initialProjectId?: string;
   showMockControls: boolean;
 }) {
   const [outcome, setOutcome] = useState<CreateTaskOutcome | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string>();
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
       idempotencyKey,
-      projectId: projects[0]?.id ?? "",
+      projectId: initialProjectId ?? "",
       title: "",
       responsibleId: "default",
       deadline: "",
       description: "",
-      priority: "default",
-      estimateHours: "",
       additionalTags: "",
       mockScenario: "success",
     },
@@ -58,20 +70,29 @@ export function TaskForm({
 
   const projectId = useWatch({ control: form.control, name: "projectId" });
   const responsibleId = useWatch({ control: form.control, name: "responsibleId" });
-  const priority = useWatch({ control: form.control, name: "priority" });
+  const deadline = useWatch({ control: form.control, name: "deadline" });
   const mockScenario = useWatch({ control: form.control, name: "mockScenario" });
   const selectedProject = projects.find((project) => project.id === projectId);
 
   async function onSubmit(values: TaskFormValues) {
     if (submitting) return;
     setSubmitting(true);
-    setOutcome(null);
+    setFileError(undefined);
     try {
-      const result = await createTaskAction(values);
+      const attemptValues =
+        outcome?.status === "unknown" ? { ...values, idempotencyKey: crypto.randomUUID() } : values;
+      if (attemptValues.idempotencyKey !== values.idempotencyKey) {
+        form.setValue("idempotencyKey", attemptValues.idempotencyKey);
+      }
+      const formData = new FormData();
+      for (const [key, value] of Object.entries(attemptValues)) formData.set(key, value);
+      for (const file of files) formData.append("files", file);
+      const result = await createTaskAction(formData);
       setOutcome(result);
       if (result.status === "error" && result.fieldErrors) {
         for (const [field, messages] of Object.entries(result.fieldErrors)) {
-          form.setError(field as keyof TaskFormValues, { message: messages[0] });
+          if (field === "files") setFileError(messages[0]);
+          else form.setError(field as keyof TaskFormValues, { message: messages[0] });
         }
       }
     } finally {
@@ -86,10 +107,17 @@ export function TaskForm({
       title: "",
       deadline: "",
       description: "",
-      estimateHours: "",
       additionalTags: "",
       mockScenario: "success",
     });
+    setFiles([]);
+    setFileError(undefined);
+    setOutcome(null);
+  }
+
+  function prepareManualRetry() {
+    form.setValue("idempotencyKey", crypto.randomUUID());
+    if (showMockControls) form.setValue("mockScenario", "success");
     setOutcome(null);
   }
 
@@ -160,7 +188,12 @@ export function TaskForm({
         <Alert className="border-amber-300 bg-amber-50 text-amber-950">
           <Clock3 className="size-4" aria-hidden="true" />
           <AlertTitle>Статус создания неизвестен</AlertTitle>
-          <AlertDescription>{outcome.message}</AlertDescription>
+          <AlertDescription className="space-y-3">
+            <p>{outcome.message}</p>
+            <Button type="button" variant="outline" className="min-h-11" onClick={prepareManualRetry}>
+              <RotateCcw className="size-4" aria-hidden="true" /> Попробовать снова
+            </Button>
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -196,7 +229,6 @@ export function TaskForm({
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="secondary">{selectedProject.requiredTag}</Badge>
                 <Badge variant="outline">{selectedProject.bitrixGroupName}</Badge>
-                {selectedProject.timeTrackingEnabled ? <Badge variant="outline">Учет времени</Badge> : null}
               </div>
             ) : null}
           </div>
@@ -243,38 +275,31 @@ export function TaskForm({
           </div>
           <div>
             <Label htmlFor="deadline">Срок</Label>
-            <Input id="deadline" type="date" className="mt-2 min-h-12" {...form.register("deadline")} />
-          </div>
-          <div>
-            <Label htmlFor="priority">Приоритет</Label>
-            <Select
-              value={priority}
-              onValueChange={(value) => form.setValue("priority", value as TaskFormValues["priority"])}
-            >
-              <SelectTrigger id="priority" className="mt-2 min-h-12 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">По настройкам проекта</SelectItem>
-                <SelectItem value="low">Низкий</SelectItem>
-                <SelectItem value="medium">Средний</SelectItem>
-                <SelectItem value="high">Высокий</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="estimate">Оценка, часов</Label>
-            <Input
-              id="estimate"
-              inputMode="decimal"
-              placeholder="Например, 1,5"
-              className="mt-2 min-h-12"
-              {...form.register("estimateHours")}
-            />
-            <FieldError message={form.formState.errors.estimateHours?.message} />
+            <div className="mt-2 flex items-center gap-2">
+              <Input
+                id="deadline"
+                type="date"
+                className="min-h-12"
+                value={deadline ?? ""}
+                onChange={(event) =>
+                  form.setValue("deadline", event.target.value, { shouldDirty: true, shouldValidate: true })
+                }
+              />
+              {deadline ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-11 shrink-0"
+                  onClick={() => form.setValue("deadline", "", { shouldDirty: true, shouldValidate: true })}
+                >
+                  Очистить
+                </Button>
+              ) : null}
+            </div>
+            <FieldError message={form.formState.errors.deadline?.message} />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="description">Описание</Label>
+            <Label htmlFor="description">Текст задачи</Label>
             <Textarea
               id="description"
               className="mt-2 min-h-28 resize-y"
@@ -282,6 +307,9 @@ export function TaskForm({
               {...form.register("description")}
             />
             <FieldError message={form.formState.errors.description?.message} />
+          </div>
+          <div className="sm:col-span-2">
+            <FilePicker files={files} onChange={setFiles} serverError={fileError} />
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="tags">Дополнительные теги</Label>

@@ -12,6 +12,7 @@ function assertDevelopmentMode() {
 }
 
 export async function getMockSession() {
+  if (process.env.NODE_ENV === "production") return null;
   const role = (await cookies()).get(COOKIE_NAME)?.value as MockRole | undefined;
   if (role !== "admin" && role !== "editor") return null;
   const user = MOCK_USERS.find((candidate) => candidate.role === role);

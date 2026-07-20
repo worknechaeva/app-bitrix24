@@ -3,18 +3,19 @@ import { ArrowRight, CheckCircle2, CircleDot, Plus, Wifi } from "lucide-react";
 import { PageHeading } from "@/components/page-heading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PROJECTS } from "@/server/fixtures";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSubmissions } from "@/server/services/create-task";
+import { getProjectRepository } from "@/server/repositories/mock-project-repository";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage() {
   const recent = listSubmissions().slice(0, 3);
-  const projects = PROJECTS.filter((project) => project.active).slice(0, 3);
+  const projects = (await getProjectRepository().listActive()).slice(0, 3);
 
   return (
     <>
       <PageHeading
-        eyebrow="Добрый день"
         title="Поставьте задачу без лишних шагов"
         description="Проектные настройки подставятся автоматически. Вам останется описать результат."
         action={
@@ -28,21 +29,21 @@ export default function DashboardPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1.5fr_1fr]">
         <Card className="shadow-sm">
-          <CardHeader className="flex-row items-center justify-between">
-            <div>
-              <CardTitle>Последние задачи</CardTitle>
-              <CardDescription>Созданы через Task Launcher</CardDescription>
-            </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/submissions">
-                Все <ArrowRight className="size-4" />
-              </Link>
-            </Button>
+          <CardHeader>
+            <CardTitle>Последние задачи</CardTitle>
+            <CardDescription>Созданы через Task Launcher</CardDescription>
+            <CardAction>
+              <Button asChild variant="link" className="min-h-11 shrink-0 px-0">
+                <Link href="/submissions" data-testid="all-tasks-link">
+                  Все задачи <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </CardAction>
           </CardHeader>
           <CardContent className="space-y-3">
             {recent.map((submission) => (
               <article key={submission.id} className="border-border flex gap-3 rounded-2xl border p-4">
-                {submission.status === "success" ? (
+                {submission.operationStatus === "success" ? (
                   <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600" />
                 ) : (
                   <CircleDot className="mt-0.5 size-5 shrink-0 text-amber-600" />
@@ -78,7 +79,7 @@ export default function DashboardPage() {
               {projects.map((project) => (
                 <Link
                   key={project.id}
-                  href={`/tasks/new?project=${project.id}`}
+                  href={`/tasks/new?projectId=${project.id}`}
                   className="hover:bg-muted flex min-h-12 items-center justify-between rounded-xl px-2 transition-colors"
                 >
                   <span>
