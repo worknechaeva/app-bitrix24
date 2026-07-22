@@ -5,9 +5,13 @@ export type Bitrix24OAuthTokenPair = {
   refreshToken: string;
 };
 
-export type Bitrix24AuthorizationResult = Bitrix24OAuthTokenPair & {
+export type Bitrix24OAuthResult = Bitrix24OAuthTokenPair & {
   memberId: string;
-  domain: string;
+  clientEndpoint: string;
+  expiresAt?: number;
+  expiresIn?: number;
+  scope: string[];
+  userId?: string;
 };
 
 export type Bitrix24CurrentUser = {
@@ -18,10 +22,7 @@ export type Bitrix24CurrentUser = {
 
 export interface Bitrix24IdentityClient {
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string;
-  exchangeAuthorizationCode(input: {
-    code: string;
-    redirectUri: string;
-  }): Promise<Bitrix24AuthorizationResult>;
-  refreshTokenPair(input: { refreshToken: string }): Promise<Bitrix24OAuthTokenPair>;
-  getCurrentUser(input: { accessToken: string }): Promise<Bitrix24CurrentUser>;
+  exchangeAuthorizationCode(input: { code: string; redirectUri: string }): Promise<Bitrix24OAuthResult>;
+  refreshTokenPair(input: { refreshToken: string }): Promise<Bitrix24OAuthResult>;
+  getCurrentUser(input: { accessToken: string; clientEndpoint: string }): Promise<Bitrix24CurrentUser>;
 }

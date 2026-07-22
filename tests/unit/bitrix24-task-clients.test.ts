@@ -37,6 +37,15 @@ describe("Bitrix24 task client composition", () => {
     expect(getBitrix24TaskClient("success")).toBeInstanceOf(DisabledBitrix24TaskClient);
   });
 
+  it("does not change task composition when the OAuth spike flag is enabled", () => {
+    vi.stubEnv("BITRIX24_OAUTH_SPIKE_ENABLED", "true");
+    vi.stubEnv("NODE_ENV", "development");
+    expect(getBitrix24TaskClient("success")).toBeInstanceOf(MockBitrix24TaskClient);
+
+    vi.stubEnv("NODE_ENV", "production");
+    expect(getBitrix24TaskClient("success")).toBeInstanceOf(DisabledBitrix24TaskClient);
+  });
+
   it("fails closed in production without a task id or provider data", async () => {
     vi.stubEnv("NODE_ENV", "production");
     const result = await getBitrix24TaskClient("success").createTask(input);
