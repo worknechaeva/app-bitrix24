@@ -1,6 +1,6 @@
 # Task Launcher
 
-Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Для Milestone 2 утверждены Bitrix24 OAuth, Supabase Postgres foundation, справочники портала и постоянное хранение, но их реализация и technical spikes еще не начинались.
+Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Первый implementation slice Milestone 2 разделяет server-only контракты интеграции и гарантирует production fail-closed для создания задач; Bitrix24 OAuth, Supabase Postgres foundation, live-справочники, постоянное хранение и technical spikes еще не начинались.
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
@@ -9,7 +9,8 @@
 - закрытый dev-only вход под mock-администратором или редактором;
 - адаптивная навигация для desktop, iPhone и Android;
 - создание задачи по проекту и названию, с пустым по умолчанию сроком и безопасными mock-вложениями;
-- server-only контракт `Bitrix24Client` и mock-адаптер первого milestone;
+- отдельные server-only контракты `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`;
+- `MockBitrix24TaskClient` в development/test и `DisabledBitrix24TaskClient` с безопасным `task_creation_disabled` в production;
 - сценарии успешного ответа, ошибки Bitrix24 и неизвестного статуса после timeout;
 - защита от двойной отправки по idempotency key и ручной повтор после timeout с новым ключом;
 - компактная история с доменными статусами и фильтром по проекту;
@@ -82,7 +83,7 @@ src/
   app/                         маршруты App Router и PWA metadata
   components/                  app shell и локальные UI-компоненты
   features/                    проекты, история и task form
-  integrations/bitrix24/       контракт, DTO и mock-адаптер
+  integrations/bitrix24/       отдельные контракты, DTO, task adapters и composition root
   lib/env/                     server-side валидация environment
   server/                      fixtures, auth guard, repositories, file boundary и use cases
 tests/
@@ -108,4 +109,4 @@ Mock-вход и mock-интеграция доступны только в deve
 
 ## Что пока не подключено
 
-Bitrix24 OAuth, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
+Bitrix24 OAuth, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).

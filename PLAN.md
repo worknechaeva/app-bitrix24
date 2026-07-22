@@ -1,6 +1,6 @@
 # Task Launcher — план Milestone 2
 
-**Статус:** архитектура Milestone 2 утверждена. Документация синхронизируется до начала реализации. Technical spikes, Supabase/Bitrix24/Vercel resources, миграции и код Milestone 2 еще не создавались.
+**Статус:** архитектура Milestone 2 утверждена. Первый implementation slice реализует server-only границы `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`, development/test mock и production fail-closed для создания задач. Technical spikes, live-клиенты, Supabase/Bitrix24/Vercel resources и миграции еще не создавались.
 
 Канонический scope находится в [docs/product/current-scope.md](./docs/product/current-scope.md), решения — в [docs/product/decisions.md](./docs/product/decisions.md), архитектурные границы — в [docs/architecture.md](./docs/architecture.md), полный порядок этапов — в [docs/roadmap.md](./docs/roadmap.md). Завершенный mock и QA-001–QA-019 сохраняются как результат Milestone 1 в [docs/qa/findings.md](./docs/qa/findings.md).
 

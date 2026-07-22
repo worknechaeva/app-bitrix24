@@ -1,8 +1,12 @@
+import "server-only";
+
 import { z } from "zod";
+
+const serverRuntimeSchema = z.enum(["development", "test", "production"]).default("development");
 
 const serverEnvSchema = z
   .object({
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    NODE_ENV: serverRuntimeSchema,
     APP_RUNTIME_MODE: z.enum(["mock", "live"]).default("mock"),
     BITRIX24_MODE: z.enum(["mock", "live"]).default("mock"),
     BITRIX24_PORTAL_URL: z.url().optional().or(z.literal("")),
@@ -35,4 +39,8 @@ export function getServerEnv() {
     BITRIX24_WEBHOOK_URL: process.env.BITRIX24_WEBHOOK_URL,
     BITRIX24_TIMEZONE: process.env.BITRIX24_TIMEZONE,
   });
+}
+
+export function getServerRuntime() {
+  return serverRuntimeSchema.parse(process.env.NODE_ENV);
 }
