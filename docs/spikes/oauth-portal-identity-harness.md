@@ -86,4 +86,22 @@ Installation callback не использует эти tokens как вход п
 
 Browser получает только `success/error`, совпадение member ID, canonical portal origin, admission status, `refreshVerified: true` при полном успехе и безопасный reason code. Scopes, permissions, expiry, access token, refresh token, authorization code, client secret, Bitrix user ID, provider payload и stack trace в response не выводятся. Отдельные sanitized server events могут содержать этап, наличие и тип поля, количество, безопасные нормализованные имена, token scope или permission hypothesis и `hypothesisMatched`, но не credentials, identity или endpoint metadata.
 
+## Результаты live campaign
+
+Завершенная непроизводственная campaign подтвердила:
+
+- локальное API-only приложение возвращает OAuth token scope `app`;
+- initial и refresh scope совпадают, а refresh rotation проходит успешно;
+- фактические права приложения получаются отдельным REST-методом `scope`;
+- метод `scope` возвращает `user_brief`;
+- права `user_brief` достаточно для admission пользователя с `ACTIVE=true` и `USER_TYPE=employee`; полное право `user` на текущем этапе не требуется;
+- portal identity, member identity и provider identity проходят проверку;
+- callback завершается с `status=success`, `refreshVerified=true` и `admission=passed`.
+
+## Known follow-ups
+
+1. До следующей live OAuth campaign исключить callback query parameters из development access logs.
+2. Отдельно заменить HTTP 502 для безопасных OAuth validation errors на 400 или 422.
+3. Эти follow-ups не входят в завершенный spike и не блокируют merge PR #4.
+
 Live OAuth campaign не запускается автоматически после настройки environment. Для нее требуется отдельное подтверждение.
