@@ -1,5 +1,8 @@
+import "server-only";
+
 import { Bitrix24Error } from "@/integrations/bitrix24/errors";
-import { MockBitrix24Client, type MockScenario } from "@/integrations/bitrix24/mock-client";
+import { getBitrix24TaskClient } from "@/integrations/bitrix24/composition-root";
+import type { MockScenario } from "@/integrations/bitrix24/mock-task-client";
 import { getEmployeeName, SEEDED_SUBMISSIONS } from "@/server/fixtures";
 import { taskCreateRequestSchema, type TaskCreateRequest } from "@/features/tasks/schema";
 import type { TaskFileMetadata } from "@/features/tasks/files";
@@ -36,7 +39,12 @@ export type SubmissionRecord = {
 
 export type CreateTaskOutcome =
   | { status: "success"; submission: SubmissionRecord }
-  | { status: "error"; message: string; fieldErrors?: Record<string, string[]> }
+  | {
+      status: "error";
+      message: string;
+      code?: "task_creation_disabled";
+      fieldErrors?: Record<string, string[]>;
+    }
   | { status: "unknown"; submission: SubmissionRecord; message: string };
 
 const submissions = new Map<string, SubmissionRecord>();
@@ -90,7 +98,7 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
     data.responsibleId === "default" || !data.responsibleId
       ? project.defaultResponsibleId
       : data.responsibleId;
-  const client = new MockBitrix24Client(data.mockScenario as MockScenario);
+  const client = getBitrix24TaskClient(data.mockScenario as MockScenario);
   const sanitizedPayload = {
     title: data.title.trim(),
     description: data.description.trim() || undefined,
@@ -111,18 +119,27 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
       deadline: sanitizedPayload.deadline,
       tags: sanitizedPayload.tags,
     });
+    if (result.status === "error") {
+      return {
+        status: "error",
+        code: result.code,
+        message: "Создание задач временно недоступно. Попробуйте позже.",
+      };
+    }
+
+    const task = result.task;
     const submission: SubmissionRecord = {
       id: crypto.randomUUID(),
       idempotencyKey: data.idempotencyKey,
       projectId: project.id,
       projectName: project.name,
-      title: result.title,
-      responsibleName: getEmployeeName(result.responsibleId),
+      title: task.title,
+      responsibleName: getEmployeeName(task.responsibleId),
       deadline: data.deadline || undefined,
       operationStatus: "success",
       taskStatus: "new",
-      bitrixTaskId: result.id,
-      bitrixTaskUrl: result.url,
+      bitrixTaskId: task.id,
+      bitrixTaskUrl: task.url,
       createdAt: new Date().toISOString(),
       files: data.files.map((file) => ({ ...file })),
       requestPayloadSanitized: sanitizedPayload,

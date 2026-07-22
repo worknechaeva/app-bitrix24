@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearRuntimeSubmissions, createTask } from "@/server/services/create-task";
 import type { TaskCreateRequest } from "@/features/tasks/schema";
 
@@ -19,6 +19,7 @@ function input(overrides: Partial<TaskCreateRequest> = {}): TaskCreateRequest {
 
 describe("createTask service", () => {
   beforeEach(() => clearRuntimeSubmissions());
+  afterEach(() => vi.unstubAllEnvs());
 
   it("returns the same successful task for duplicate requests", async () => {
     const values = input();
@@ -65,5 +66,24 @@ describe("createTask service", () => {
   it("returns a safe message for an integration error", async () => {
     const result = await createTask(input({ mockScenario: "error" }));
     expect(result).toEqual({ status: "error", message: "Не удалось создать задачу. Попробуйте позже." });
+  });
+
+  it("fails closed in production even when user input asks for mock success", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+
+    const untrustedInput = {
+      ...input({ mockScenario: "success" }),
+      runtimeMode: "development",
+    } as TaskCreateRequest;
+    const result = await createTask(untrustedInput);
+
+    expect(result).toEqual({
+      status: "error",
+      code: "task_creation_disabled",
+      message: "Создание задач временно недоступно. Попробуйте позже.",
+    });
+    expect(result.status).not.toBe("success");
+    expect(result).not.toHaveProperty("submission");
+    expect(result).not.toHaveProperty("bitrixTaskId");
   });
 });

@@ -5,18 +5,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MockBitrix24Client } from "@/integrations/bitrix24/mock-client";
+import { EMPLOYEES } from "@/server/fixtures";
 
 export const dynamic = "force-dynamic";
 
-export default async function BitrixSettingsPage() {
-  const client = new MockBitrix24Client();
-  const [connection, user, employees, workgroups] = await Promise.all([
-    client.checkConnection(),
-    client.getCurrentUser(),
-    client.listEmployees(),
-    client.listWorkgroups(),
-  ]);
+export default function BitrixSettingsPage() {
+  const employees = EMPLOYEES;
+  const connection = { accountName: "Демо-портал Bitrix24" };
+  const user = { name: "Webhook Demo" };
+  const workgroups = [{ name: "Разработка CMS" }];
   return (
     <>
       <PageHeading

@@ -1,3 +1,5 @@
+import "server-only";
+
 export type Bitrix24ErrorCode = "BITRIX_UNAVAILABLE" | "BITRIX_TIMEOUT";
 
 export class Bitrix24Error extends Error {

@@ -29,7 +29,17 @@ describe("taskFormSchema", () => {
 
   it("does not contain removed task fields", () => {
     expect(Object.keys(taskFormSchema.shape)).not.toEqual(
-      expect.arrayContaining(["priority", "estimateHours", "allowTimeTracking"]),
+      expect.arrayContaining([
+        "priority",
+        "defaultPriority",
+        "estimateHours",
+        "estimateSeconds",
+        "allowTimeTracking",
+        "timeTrackingEnabled",
+        "PRIORITY",
+        "TIME_ESTIMATE",
+        "ALLOW_TIME_TRACKING",
+      ]),
     );
   });
 });
