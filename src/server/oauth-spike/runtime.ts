@@ -12,7 +12,7 @@ import {
 import { EphemeralOAuthStateStore } from "./ephemeral-state-store";
 
 export type OAuthSpikeLogger = {
-  info(event: string, details: Record<string, boolean | string>): void;
+  info(event: string, details: Record<string, boolean | number | string | readonly string[]>): void;
 };
 
 type OAuthSpikeUnavailableRuntime = { status: "disabled" } | { status: "invalid" };
@@ -56,9 +56,11 @@ export function getOAuthSpikeUserRuntime(): OAuthSpikeUserRuntime {
           clientId: config.clientId,
           clientSecret: config.clientSecret,
           redirectUri: config.redirectUri,
+          scopeHypothesis: config.scopeHypothesis,
           tokenEndpoint: config.tokenEndpoint,
         },
         transport,
+        (diagnostic) => logger.info("bitrix24_oauth_spike_scope_diagnostic", { ...diagnostic }),
       ),
       stateStore,
       logger,

@@ -5,6 +5,11 @@ import type {
   Bitrix24OAuthResult,
 } from "@/integrations/bitrix24/identity-client";
 import { OAuthSpikeError } from "@/integrations/bitrix24/spike/errors";
+import type {
+  OAuthSpikeHttpResponse,
+  OAuthSpikeHttpTransport,
+} from "@/integrations/bitrix24/spike/http-transport";
+import { SpikeBitrix24IdentityClient } from "@/integrations/bitrix24/spike/spike-identity-client";
 import { EphemeralOAuthStateStore } from "@/server/oauth-spike/ephemeral-state-store";
 import {
   handleOAuthSpikeCallback,
@@ -28,6 +33,34 @@ const refreshedAuthorization: Bitrix24OAuthResult = {
   accessToken: "browser-must-not-see-rotated-access-token",
   refreshToken: "browser-must-not-see-rotated-refresh-token",
 };
+
+type LogDetails = Record<string, boolean | number | string | readonly string[]>;
+type LogEntry = { event: string; details: LogDetails };
+
+function tokenResponse(scope: unknown, suffix: string) {
+  return {
+    access_token: `browser-must-not-see-${suffix}-access-token`,
+    refresh_token: `browser-must-not-see-${suffix}-refresh-token`,
+    member_id: expectedMemberId,
+    client_endpoint: "https://portal.example/rest/",
+    expires_in: 3600,
+    scope,
+    user_id: "browser-must-not-see-provider-user",
+  };
+}
+
+class QueueTransport implements OAuthSpikeHttpTransport {
+  readonly calls: Array<{ url: string; body: URLSearchParams }> = [];
+
+  constructor(private readonly responses: OAuthSpikeHttpResponse[]) {}
+
+  async postForm(url: URL, body: URLSearchParams): Promise<OAuthSpikeHttpResponse> {
+    this.calls.push({ url: url.toString(), body: new URLSearchParams(body) });
+    const response = this.responses.shift();
+    if (!response) throw new Error("No fake response");
+    return response;
+  }
+}
 
 class FakeIdentityClient implements Bitrix24IdentityClient {
   authorization = authorization;
@@ -58,8 +91,8 @@ class FakeIdentityClient implements Bitrix24IdentityClient {
   }
 }
 
-function makeRuntime(client = new FakeIdentityClient()) {
-  const logEntries: Array<{ event: string; details: Record<string, boolean | string> }> = [];
+function makeRuntime(client: Bitrix24IdentityClient = new FakeIdentityClient()) {
+  const logEntries: LogEntry[] = [];
   const runtime: OAuthSpikeUserRuntime = {
     status: "enabled",
     config: {
@@ -84,8 +117,34 @@ function makeRuntime(client = new FakeIdentityClient()) {
   return { runtime, client, logEntries };
 }
 
+function makeDiagnosticRuntime(responses: OAuthSpikeHttpResponse[]) {
+  const logEntries: LogEntry[] = [];
+  const transport = new QueueTransport(responses);
+  const logger = {
+    info(event: string, details: LogDetails) {
+      logEntries.push({ event, details });
+    },
+  };
+  const client = new SpikeBitrix24IdentityClient(
+    {
+      portalOrigin: "https://portal.example",
+      clientId: "local.test",
+      clientSecret: "browser-must-not-see-client-secret",
+      redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
+      scopeHypothesis: "user_brief",
+      tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
+    },
+    transport,
+    (diagnostic) => logger.info("bitrix24_oauth_spike_scope_diagnostic", { ...diagnostic }),
+  );
+  const { runtime } = makeRuntime(client);
+  if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+  const diagnosticRuntime: OAuthSpikeUserRuntime = { ...runtime, logger };
+  return { runtime: diagnosticRuntime, transport, logEntries };
+}
+
 function makeInstallRuntime() {
-  const logEntries: Array<{ event: string; details: Record<string, boolean | string> }> = [];
+  const logEntries: LogEntry[] = [];
   const runtime: OAuthSpikeInstallRuntime = {
     status: "enabled",
     logger: {
@@ -362,6 +421,131 @@ describe("OAuth spike route handlers", () => {
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
     expect(JSON.stringify(logEntries)).not.toContain(authorization.accessToken);
+  });
+
+  it("logs a sanitized initial scope mismatch before refresh", async () => {
+    const initialResponse = tokenResponse(" app, basic app ", "initial");
+    const { runtime, transport, logEntries } = makeDiagnosticRuntime([
+      { ok: true, status: 200, body: initialResponse },
+    ]);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const code = "browser-must-not-see-authorization-code";
+    const callbackUrl = `https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=${code}`;
+    const response = await handleOAuthSpikeCallback(new Request(callbackUrl), runtime);
+    const diagnostics = logEntries.filter((entry) => entry.event === "bitrix24_oauth_spike_scope_diagnostic");
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      status: "error",
+      reasonCode: "scope_hypothesis_mismatch",
+    });
+    expect(transport.calls).toHaveLength(1);
+    expect(diagnostics).toEqual([
+      {
+        event: "bitrix24_oauth_spike_scope_diagnostic",
+        details: {
+          stage: "initial",
+          scopePresent: true,
+          scopeType: "string",
+          normalizedScopeCount: 2,
+          normalizedScopes: ["app", "basic"],
+          hypothesis: "user_brief",
+          hypothesisMatched: false,
+        },
+      },
+    ]);
+    const diagnosticLogs = JSON.stringify(diagnostics);
+    for (const sensitiveValue of [
+      initialResponse.access_token,
+      initialResponse.refresh_token,
+      initialResponse.user_id,
+      code,
+      state,
+      runtime.config.clientSecret,
+      callbackUrl,
+      JSON.stringify(initialResponse),
+    ]) {
+      expect(diagnosticLogs).not.toContain(sensitiveValue);
+    }
+  });
+
+  it("logs separate initial and refresh diagnostics on a successful callback", async () => {
+    const initialResponse = tokenResponse("user_brief,basic", "initial");
+    const refreshResponse = tokenResponse(" basic user_brief ", "refresh");
+    const { runtime, transport, logEntries } = makeDiagnosticRuntime([
+      { ok: true, status: 200, body: initialResponse },
+      { ok: true, status: 200, body: refreshResponse },
+      {
+        ok: true,
+        status: 200,
+        body: {
+          result: {
+            ID: "browser-must-not-see-provider-user",
+            ACTIVE: true,
+            USER_TYPE: "employee",
+          },
+        },
+      },
+    ]);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(
+        `https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=browser-must-not-see-code`,
+      ),
+      runtime,
+    );
+    const diagnostics = logEntries.filter((entry) => entry.event === "bitrix24_oauth_spike_scope_diagnostic");
+
+    expect(response.status).toBe(200);
+    expect(transport.calls).toHaveLength(3);
+    expect(diagnostics.map((entry) => entry.details)).toEqual([
+      {
+        stage: "initial",
+        scopePresent: true,
+        scopeType: "string",
+        normalizedScopeCount: 2,
+        normalizedScopes: ["basic", "user_brief"],
+        hypothesis: "user_brief",
+        hypothesisMatched: true,
+      },
+      {
+        stage: "refresh",
+        scopePresent: true,
+        scopeType: "string",
+        normalizedScopeCount: 2,
+        normalizedScopes: ["basic", "user_brief"],
+        hypothesis: "user_brief",
+        hypothesisMatched: true,
+      },
+    ]);
+  });
+
+  it("logs refresh diagnostics before rejecting scope drift", async () => {
+    const { runtime, transport, logEntries } = makeDiagnosticRuntime([
+      { ok: true, status: 200, body: tokenResponse("user_brief,basic", "initial") },
+      { ok: true, status: 200, body: tokenResponse("user_brief", "refresh") },
+    ]);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+    const diagnostics = logEntries.filter((entry) => entry.event === "bitrix24_oauth_spike_scope_diagnostic");
+
+    await expect(response.json()).resolves.toEqual({
+      status: "error",
+      reasonCode: "oauth_metadata_drift",
+    });
+    expect(transport.calls).toHaveLength(2);
+    expect(diagnostics.map((entry) => entry.details.stage)).toEqual(["initial", "refresh"]);
+    expect(diagnostics[0]?.details.hypothesisMatched).toBe(true);
+    expect(diagnostics[1]?.details).toMatchObject({
+      normalizedScopes: ["user_brief"],
+      hypothesisMatched: true,
+    });
   });
 
   it.each([

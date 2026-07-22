@@ -6,6 +6,10 @@ import { OAuthSpikeError } from "./errors";
 import type { OAuthSpikeHttpTransport } from "./http-transport";
 import { normalizeOAuthSpikeScopes } from "./portal-identity";
 
+const MAX_DIAGNOSTIC_SCOPE_COUNT = 32;
+const MAX_DIAGNOSTIC_SCOPE_NAME_LENGTH = 64;
+const SAFE_SCOPE_NAME = /^[a-z0-9_-]+$/i;
+
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
   refresh_token: z.string().min(1),
@@ -44,13 +48,68 @@ export type SpikeBitrix24IdentityClientConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
+  scopeHypothesis: "user_brief" | "user";
   tokenEndpoint: string;
 };
+
+export type OAuthSpikeScopeDiagnostic = {
+  stage: "initial" | "refresh";
+  scopePresent: boolean;
+  scopeType: "missing" | "string" | "null" | "array" | "number" | "object" | "boolean" | "unknown";
+  normalizedScopeCount: number;
+  normalizedScopes: string[];
+  hypothesis: "user_brief" | "user";
+  hypothesisMatched: boolean;
+};
+
+type OAuthSpikeScopeDiagnosticObserver = (diagnostic: OAuthSpikeScopeDiagnostic) => void;
+
+function classifyScopeType(value: unknown): OAuthSpikeScopeDiagnostic["scopeType"] {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "string") return "string";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "object") return "object";
+  return "unknown";
+}
+
+function createScopeDiagnostic(
+  responseBody: unknown,
+  stage: OAuthSpikeScopeDiagnostic["stage"],
+  hypothesis: OAuthSpikeScopeDiagnostic["hypothesis"],
+): OAuthSpikeScopeDiagnostic {
+  const scopePresent =
+    typeof responseBody === "object" &&
+    responseBody !== null &&
+    Object.prototype.hasOwnProperty.call(responseBody, "scope");
+  const rawScope = scopePresent ? (responseBody as Record<string, unknown>).scope : undefined;
+  const scopeType = scopePresent ? classifyScopeType(rawScope) : "missing";
+  const normalizedScopes =
+    typeof rawScope === "string" ? normalizeOAuthSpikeScopes(rawScope.split(/[\s,]+/)) : [];
+  const safeNormalizedScopes =
+    normalizedScopes.length <= MAX_DIAGNOSTIC_SCOPE_COUNT
+      ? normalizedScopes.filter(
+          (scope) => scope.length <= MAX_DIAGNOSTIC_SCOPE_NAME_LENGTH && SAFE_SCOPE_NAME.test(scope),
+        )
+      : [];
+
+  return {
+    stage,
+    scopePresent,
+    scopeType,
+    normalizedScopeCount: normalizedScopes.length,
+    normalizedScopes: safeNormalizedScopes,
+    hypothesis,
+    hypothesisMatched: normalizedScopes.includes(hypothesis),
+  };
+}
 
 export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
   constructor(
     private readonly config: SpikeBitrix24IdentityClientConfig,
     private readonly transport: OAuthSpikeHttpTransport,
+    private readonly observeScopeDiagnostic: OAuthSpikeScopeDiagnosticObserver = () => undefined,
   ) {}
 
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string {
@@ -70,6 +129,7 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     }
 
     return this.requestToken(
+      "initial",
       new URLSearchParams({
         grant_type: "authorization_code",
         client_id: this.config.clientId,
@@ -81,6 +141,7 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
 
   refreshTokenPair(input: { refreshToken: string }): Promise<Bitrix24OAuthResult> {
     return this.requestToken(
+      "refresh",
       new URLSearchParams({
         grant_type: "refresh_token",
         client_id: this.config.clientId,
@@ -141,11 +202,15 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     };
   }
 
-  private async requestToken(body: URLSearchParams): Promise<Bitrix24OAuthResult> {
+  private async requestToken(
+    stage: OAuthSpikeScopeDiagnostic["stage"],
+    body: URLSearchParams,
+  ): Promise<Bitrix24OAuthResult> {
     const response = await this.safePost(new URL(this.config.tokenEndpoint), body);
     if (!response.ok) {
       throw new OAuthSpikeError("token_exchange_failed");
     }
+    this.observeScopeDiagnostic(createScopeDiagnostic(response.body, stage, this.config.scopeHypothesis));
     const parsed = tokenResponseSchema.safeParse(response.body);
     if (!parsed.success) throw new OAuthSpikeError("token_exchange_failed");
 

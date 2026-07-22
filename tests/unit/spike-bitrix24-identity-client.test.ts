@@ -5,7 +5,10 @@ import type {
   OAuthSpikeHttpTransport,
 } from "@/integrations/bitrix24/spike/http-transport";
 import { FetchOAuthSpikeHttpTransport } from "@/integrations/bitrix24/spike/http-transport";
-import { SpikeBitrix24IdentityClient } from "@/integrations/bitrix24/spike/spike-identity-client";
+import {
+  type OAuthSpikeScopeDiagnostic,
+  SpikeBitrix24IdentityClient,
+} from "@/integrations/bitrix24/spike/spike-identity-client";
 
 class QueueTransport implements OAuthSpikeHttpTransport {
   readonly calls: Array<{ url: string; body: URLSearchParams }> = [];
@@ -25,6 +28,7 @@ const config = {
   clientId: "local.test",
   clientSecret: "synthetic-client-secret",
   redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
+  scopeHypothesis: "user_brief" as const,
   tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
 };
 
@@ -39,6 +43,24 @@ const tokenBody = {
   scope: "user_brief,basic",
   user_id: 7,
 };
+
+async function captureScopeDiagnostic(scope: unknown, scopePresent = true) {
+  const body: Record<string, unknown> = { ...tokenBody };
+  if (scopePresent) body.scope = scope;
+  else delete body.scope;
+  const diagnostics: OAuthSpikeScopeDiagnostic[] = [];
+  const client = new SpikeBitrix24IdentityClient(
+    config,
+    new QueueTransport([{ ok: true, status: 200, body }]),
+    (diagnostic) => diagnostics.push(diagnostic),
+  );
+
+  await client
+    .exchangeAuthorizationCode({ code: "synthetic-code", redirectUri: config.redirectUri })
+    .catch(() => undefined);
+
+  return diagnostics[0];
+}
 
 describe("SpikeBitrix24IdentityClient", () => {
   afterEach(() => {
@@ -96,6 +118,72 @@ describe("SpikeBitrix24IdentityClient", () => {
     );
     expect(transport.calls[0]?.body.get("code")).toBe("synthetic-code");
     expect(transport.calls[1]?.body.get("refresh_token")).toBe("synthetic-refresh-token");
+  });
+
+  it.each([
+    ["commas", "user_brief,basic", ["basic", "user_brief"]],
+    ["whitespace", "user_brief basic", ["basic", "user_brief"]],
+    ["mixed separators", " user_brief,\t basic\nuser_brief ", ["basic", "user_brief"]],
+  ])("diagnoses and normalizes scopes separated by %s", async (_label, rawScope, expectedScopes) => {
+    await expect(captureScopeDiagnostic(rawScope)).resolves.toEqual({
+      stage: "initial",
+      scopePresent: true,
+      scopeType: "string",
+      normalizedScopeCount: expectedScopes.length,
+      normalizedScopes: expectedScopes,
+      hypothesis: "user_brief",
+      hypothesisMatched: true,
+    });
+  });
+
+  it("preserves scope case and compares the hypothesis case-sensitively", async () => {
+    await expect(captureScopeDiagnostic("USER_BRIEF,user_brief")).resolves.toMatchObject({
+      normalizedScopeCount: 2,
+      normalizedScopes: ["USER_BRIEF", "user_brief"],
+      hypothesisMatched: true,
+    });
+    await expect(captureScopeDiagnostic("USER_BRIEF")).resolves.toMatchObject({
+      normalizedScopes: ["USER_BRIEF"],
+      hypothesisMatched: false,
+    });
+  });
+
+  it.each([
+    ["missing", undefined, false, "missing"],
+    ["empty string", "", true, "string"],
+    ["null", null, true, "null"],
+    ["array", ["user_brief"], true, "array"],
+    ["number", 1, true, "number"],
+    ["object", { value: "user_brief" }, true, "object"],
+    ["boolean", true, true, "boolean"],
+  ])("classifies a %s scope without logging a raw value", async (_label, value, present, scopeType) => {
+    await expect(captureScopeDiagnostic(value, present)).resolves.toEqual({
+      stage: "initial",
+      scopePresent: present,
+      scopeType,
+      normalizedScopeCount: 0,
+      normalizedScopes: [],
+      hypothesis: "user_brief",
+      hypothesisMatched: false,
+    });
+  });
+
+  it("omits unsafe and overlong names from diagnostic scopes", async () => {
+    await expect(captureScopeDiagnostic(`user_brief,bad=value,${"x".repeat(65)}`)).resolves.toMatchObject({
+      normalizedScopeCount: 3,
+      normalizedScopes: ["user_brief"],
+      hypothesisMatched: true,
+    });
+  });
+
+  it("omits the complete diagnostic list when the normalized scope count exceeds the limit", async () => {
+    const excessiveScopes = Array.from({ length: 33 }, (_, index) => `scope_${index}`).join(",");
+
+    await expect(captureScopeDiagnostic(excessiveScopes)).resolves.toMatchObject({
+      normalizedScopeCount: 33,
+      normalizedScopes: [],
+      hypothesisMatched: false,
+    });
   });
 
   it("uses user.get only when user.current lacks USER_TYPE", async () => {
