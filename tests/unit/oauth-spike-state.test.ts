@@ -41,4 +41,39 @@ describe("EphemeralOAuthStateStore", () => {
     now = 1_051;
     expect(() => store.consume(state)).toThrowError(expect.objectContaining({ reasonCode: "expired_state" }));
   });
+
+  it("regenerates after an active-state hash collision without overwriting it", () => {
+    const first = "a".repeat(43);
+    const second = "b".repeat(43);
+    const generated = [first, first, second];
+    const store = new EphemeralOAuthStateStore({
+      createRandomState: () => generated.shift() ?? second,
+    });
+
+    expect(store.issue()).toBe(first);
+    expect(store.issue()).toBe(second);
+    expect(store.snapshotHashes()).toHaveLength(2);
+    expect(() => store.consume(first)).not.toThrow();
+    expect(() => store.consume(second)).not.toThrow();
+  });
+
+  it("regenerates after a consumed-state collision and fails safely after bounded attempts", () => {
+    const first = "a".repeat(43);
+    const second = "b".repeat(43);
+    const generated = [first, first, second];
+    const store = new EphemeralOAuthStateStore({
+      createRandomState: () => generated.shift() ?? first,
+    });
+
+    expect(store.issue()).toBe(first);
+    store.consume(first);
+    expect(store.issue()).toBe(second);
+
+    const exhaustedStore = new EphemeralOAuthStateStore({ createRandomState: () => first });
+    expect(exhaustedStore.issue()).toBe(first);
+    expect(() => exhaustedStore.issue()).toThrowError(
+      expect.objectContaining({ reasonCode: "state_generation_failed" }),
+    );
+    expect(exhaustedStore.snapshotHashes()).toHaveLength(1);
+  });
 });

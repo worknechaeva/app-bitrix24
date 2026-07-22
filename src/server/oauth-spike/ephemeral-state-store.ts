@@ -3,6 +3,8 @@ import "server-only";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { OAuthSpikeError } from "@/integrations/bitrix24/spike/errors";
 
+const MAX_STATE_GENERATION_ATTEMPTS = 5;
+
 export type EphemeralOAuthStateStoreOptions = {
   ttlMs?: number;
   now?: () => number;
@@ -24,9 +26,20 @@ export class EphemeralOAuthStateStore {
 
   issue(): string {
     this.removeOldTombstones();
-    const state = this.createRandomState();
-    this.activeStates.set(this.hash(state), this.now() + this.ttlMs);
-    return state;
+    for (let attempt = 0; attempt < MAX_STATE_GENERATION_ATTEMPTS; attempt += 1) {
+      const state = this.createRandomState();
+      if (!/^[A-Za-z0-9_-]{43}$/.test(state)) continue;
+      const candidateHash = this.hash(state);
+      if (
+        this.findMatchingKey(this.activeStates, candidateHash) ||
+        this.findMatchingKey(this.consumedStates, candidateHash)
+      ) {
+        continue;
+      }
+      this.activeStates.set(candidateHash, this.now() + this.ttlMs);
+      return state;
+    }
+    throw new OAuthSpikeError("state_generation_failed");
   }
 
   consume(state: string): void {

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Bitrix24CurrentUser, Bitrix24IdentityClient, Bitrix24OAuthResult } from "../identity-client";
 import { OAuthSpikeError } from "./errors";
 import type { OAuthSpikeHttpTransport } from "./http-transport";
+import { normalizeOAuthSpikeScopes } from "./portal-identity";
 
 const tokenResponseSchema = z.object({
   access_token: z.string().min(1),
@@ -61,6 +62,7 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     const url = new URL("/oauth/authorize/", this.config.portalOrigin);
     url.searchParams.set("client_id", this.config.clientId);
     url.searchParams.set("state", input.state);
+    url.searchParams.set("scope", this.config.scopes.join(","));
     return url.toString();
   }
 
@@ -156,10 +158,7 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
       clientEndpoint: parsed.data.client_endpoint,
       expiresAt: parsed.data.expires,
       expiresIn: parsed.data.expires_in,
-      scope: parsed.data.scope
-        .split(",")
-        .map((scope) => scope.trim())
-        .filter(Boolean),
+      scope: normalizeOAuthSpikeScopes(parsed.data.scope.split(/[\s,]+/)),
       userId: parsed.data.user_id,
     };
 

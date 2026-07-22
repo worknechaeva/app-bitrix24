@@ -22,6 +22,21 @@ describe("OAuth spike environment", () => {
     });
   });
 
+  it.each(["user_brief", "user_basic", "user"])("accepts exactly one user scope: %s", (scope) => {
+    expect(
+      parseOAuthSpikeUserConfig({ ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPES: scope }, "development"),
+    ).toMatchObject({ enabled: true, scopes: [scope] });
+  });
+
+  it("allows optional basic alongside one user scope", () => {
+    expect(
+      parseOAuthSpikeUserConfig(
+        { ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPES: "user,basic" },
+        "development",
+      ),
+    ).toMatchObject({ enabled: true, scopes: ["user", "basic"] });
+  });
+
   it("enables install bootstrap with only the exact dev/test flag", () => {
     expect(parseOAuthSpikeInstallConfig({ BITRIX24_OAUTH_SPIKE_ENABLED: "true" }, "development")).toEqual({
       enabled: true,
@@ -46,8 +61,16 @@ describe("OAuth spike environment", () => {
   });
 
   it.each([
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "basic" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,user_basic" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,user" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user,user" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,task" },
     { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,tasks" },
     { BITRIX24_OAUTH_SPIKE_SCOPES: "crm" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,webhook" },
+    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,unknown" },
     { BITRIX24_OAUTH_SPIKE_REDIRECT_URI: "https://evil.example/api/bitrix24/oauth/callback" },
     { BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: "https://evil.example/oauth/token/" },
     { BITRIX24_OAUTH_SPIKE_PORTAL_ORIGIN: "https://portal.example:8443" },

@@ -6,7 +6,10 @@ import {
   OAuthSpikeError,
   type OAuthSpikeReasonCode,
 } from "@/integrations/bitrix24/spike/errors";
-import { verifyOAuthSpikePortalIdentity } from "@/integrations/bitrix24/spike/portal-identity";
+import {
+  verifyOAuthSpikeAuthorizationResult,
+  verifyOAuthSpikeRefreshResult,
+} from "@/integrations/bitrix24/spike/portal-identity";
 import { canonicalPortalOriginFromClientEndpoint } from "@/integrations/bitrix24/portal-origin";
 import type { OAuthSpikeInstallRuntime, OAuthSpikeUserRuntime } from "./runtime";
 
@@ -101,17 +104,28 @@ export async function handleOAuthSpikeCallback(
       code,
       redirectUri: runtime.config.redirectUri,
     });
-    const portalIdentity = verifyOAuthSpikePortalIdentity(
+    const initialAuthorization = verifyOAuthSpikeAuthorizationResult(
       authorization,
       runtime.config.expectedMemberId,
       runtime.config.portalOrigin,
     );
-    const currentUser = await runtime.identityClient.getCurrentUser({
-      accessToken: authorization.accessToken,
-      clientEndpoint: authorization.clientEndpoint,
+    const refreshedAuthorization = await runtime.identityClient.refreshTokenPair({
+      refreshToken: authorization.refreshToken,
     });
-    if (authorization.userId !== undefined && authorization.userId !== currentUser.id) {
-      throw new OAuthSpikeError("provider_identity_mismatch");
+    const portalIdentity = verifyOAuthSpikeRefreshResult(refreshedAuthorization, {
+      memberId: authorization.memberId,
+      canonicalPortalOrigin: initialAuthorization.canonicalPortalOrigin,
+      scope: initialAuthorization.scope,
+      userId: authorization.userId,
+    });
+    const currentUser = await runtime.identityClient.getCurrentUser({
+      accessToken: refreshedAuthorization.accessToken,
+      clientEndpoint: refreshedAuthorization.clientEndpoint,
+    });
+    for (const providerUserId of [authorization.userId, refreshedAuthorization.userId]) {
+      if (providerUserId !== undefined && providerUserId !== currentUser.id) {
+        throw new OAuthSpikeError("provider_identity_mismatch");
+      }
     }
     const admission = evaluateOAuthSpikeAdmission(currentUser);
 
@@ -121,6 +135,8 @@ export async function handleOAuthSpikeCallback(
         reasonCode: admission.reasonCode,
         memberIdMatches: true,
         portalOrigin: portalIdentity.canonicalPortalOrigin,
+        scopes: initialAuthorization.scope.join(","),
+        refreshVerified: true,
       });
       return safeError(admission.reasonCode, 403);
     }
@@ -130,12 +146,15 @@ export async function handleOAuthSpikeCallback(
       memberIdMatches: true,
       portalOrigin: portalIdentity.canonicalPortalOrigin,
       admission: "passed",
+      scopes: initialAuthorization.scope.join(","),
+      refreshVerified: true,
     });
     return safeJson({
       status: "success",
       memberIdMatches: true,
       portalOrigin: portalIdentity.canonicalPortalOrigin,
       admission: "passed",
+      refreshVerified: true,
     });
   } catch (error) {
     const reasonCode = getSafeOAuthSpikeReason(error);

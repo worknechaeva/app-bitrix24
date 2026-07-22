@@ -55,6 +55,7 @@ describe("SpikeBitrix24IdentityClient", () => {
     expect(result.origin).toBe("https://portal.example");
     expect(result.searchParams.get("client_id")).toBe("local.test");
     expect(result.searchParams.get("state")).toBe("state");
+    expect(result.searchParams.get("scope")).toBe("user_brief");
     expect(result.toString()).not.toContain(config.clientSecret);
   });
 
@@ -84,7 +85,7 @@ describe("SpikeBitrix24IdentityClient", () => {
       clientEndpoint: "https://portal.example/rest/",
       expiresAt: 1_800_000_000,
       expiresIn: 3600,
-      scope: ["user_brief", "basic"],
+      scope: ["basic", "user_brief"],
       userId: "7",
     });
     expect(exchange).not.toHaveProperty("domain");

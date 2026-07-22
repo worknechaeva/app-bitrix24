@@ -5,7 +5,8 @@ import { canonicalPortalOriginFromConfiguredOrigin } from "@/integrations/bitrix
 import { OAuthSpikeError } from "@/integrations/bitrix24/spike/errors";
 
 const OFFICIAL_TOKEN_ENDPOINT = "https://oauth.bitrix.info/oauth/token/";
-const ALLOWED_SCOPES = new Set(["basic", "user_brief"]);
+const USER_SCOPES = new Set(["user_brief", "user_basic", "user"]);
+const ALLOWED_SCOPES = new Set(["basic", ...USER_SCOPES]);
 
 export type OAuthSpikeInstallConfig = { enabled: true } | { enabled: false };
 
@@ -80,6 +81,7 @@ export function parseOAuthSpikeUserConfig(
     );
     const redirectUri = new URL(parsed.data.BITRIX24_OAUTH_SPIKE_REDIRECT_URI);
     const scopes = parsed.data.BITRIX24_OAUTH_SPIKE_SCOPES.split(/[\s,]+/).filter(Boolean);
+    const userScopes = scopes.filter((scope) => USER_SCOPES.has(scope));
 
     if (
       redirectUri.protocol !== "https:" ||
@@ -90,6 +92,8 @@ export function parseOAuthSpikeUserConfig(
       redirectUri.hash !== "" ||
       redirectUri.pathname !== "/api/bitrix24/oauth/callback" ||
       scopes.length === 0 ||
+      new Set(scopes).size !== scopes.length ||
+      userScopes.length !== 1 ||
       scopes.some((scope) => !ALLOWED_SCOPES.has(scope)) ||
       parsed.data.BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT !== OFFICIAL_TOKEN_ENDPOINT
     ) {

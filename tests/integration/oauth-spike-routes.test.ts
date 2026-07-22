@@ -23,20 +23,30 @@ const authorization: Bitrix24OAuthResult = {
   scope: ["user_brief"],
   userId: "browser-must-not-see-user-id",
 };
+const refreshedAuthorization: Bitrix24OAuthResult = {
+  ...authorization,
+  accessToken: "browser-must-not-see-rotated-access-token",
+  refreshToken: "browser-must-not-see-rotated-refresh-token",
+};
 
 class FakeIdentityClient implements Bitrix24IdentityClient {
   authorization = authorization;
+  refreshedAuthorization = refreshedAuthorization;
   currentUser: Bitrix24CurrentUser = {
     id: "browser-must-not-see-user-id",
     active: true,
     userType: "employee",
   };
   exchangeError?: unknown;
+  refreshError?: unknown;
   readonly exchangeAuthorizationCode = vi.fn(async () => {
     if (this.exchangeError) throw this.exchangeError;
     return this.authorization;
   });
-  readonly refreshTokenPair = vi.fn(async () => this.authorization);
+  readonly refreshTokenPair = vi.fn(async () => {
+    if (this.refreshError) throw this.refreshError;
+    return this.refreshedAuthorization;
+  });
   readonly getCurrentUser = vi.fn(async () => this.currentUser);
 
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string {
@@ -107,8 +117,8 @@ describe("OAuth spike route handlers", () => {
     expect(location.toString()).not.toContain("evil.example");
   });
 
-  it("returns a sanitized success without credentials, provider payload or Bitrix user ID", async () => {
-    const { runtime, logEntries } = makeRuntime();
+  it("refreshes once and returns a sanitized success without credential metadata", async () => {
+    const { runtime, client, logEntries } = makeRuntime();
     if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
     const state = runtime.stateStore.issue();
     const code = "browser-must-not-see-authorization-code";
@@ -127,10 +137,21 @@ describe("OAuth spike route handlers", () => {
       memberIdMatches: true,
       portalOrigin: "https://portal.example",
       admission: "passed",
+      refreshVerified: true,
+    });
+    expect(client.refreshTokenPair).toHaveBeenCalledOnce();
+    expect(client.refreshTokenPair).toHaveBeenCalledWith({
+      refreshToken: authorization.refreshToken,
+    });
+    expect(client.getCurrentUser).toHaveBeenCalledWith({
+      accessToken: refreshedAuthorization.accessToken,
+      clientEndpoint: refreshedAuthorization.clientEndpoint,
     });
     for (const sensitiveValue of [
       authorization.accessToken,
       authorization.refreshToken,
+      refreshedAuthorization.accessToken,
+      refreshedAuthorization.refreshToken,
       authorization.userId ?? "",
       code,
       runtime.config.clientSecret,
@@ -157,6 +178,7 @@ describe("OAuth spike route handlers", () => {
       reasonCode: "portal_mismatch",
     });
     expect(client.getCurrentUser).not.toHaveBeenCalled();
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
 
   it("consumes state before returning OAuth denied and rejects reuse", async () => {
@@ -177,6 +199,7 @@ describe("OAuth spike route handlers", () => {
     await expect(denied.json()).resolves.toEqual({ status: "error", reasonCode: "oauth_denied" });
     await expect(reused.json()).resolves.toEqual({ status: "error", reasonCode: "reused_state" });
     expect(client.exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
 
   it("never exchanges a code for invalid or expired state", async () => {
@@ -204,6 +227,7 @@ describe("OAuth spike route handlers", () => {
     await expect(invalid.json()).resolves.toMatchObject({ reasonCode: "invalid_state" });
     await expect(expired.json()).resolves.toMatchObject({ reasonCode: "expired_state" });
     expect(client.exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
 
   it("returns safe admission denials", async () => {
@@ -216,6 +240,7 @@ describe("OAuth spike route handlers", () => {
       const client = new FakeIdentityClient();
       client.currentUser = currentUser;
       client.authorization = { ...authorization, userId: currentUser.id };
+      client.refreshedAuthorization = { ...refreshedAuthorization, userId: currentUser.id };
       const { runtime } = makeRuntime(client);
       if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
       const state = runtime.stateStore.issue();
@@ -248,6 +273,7 @@ describe("OAuth spike route handlers", () => {
     });
     expect(responseText + logs).not.toContain("provider payload");
     expect(responseText + logs).not.toContain("secret-code");
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
 
   it("rejects provider user identity mismatch", async () => {
@@ -267,6 +293,74 @@ describe("OAuth spike route handlers", () => {
       reasonCode: "provider_identity_mismatch",
     });
   });
+
+  it.each([
+    [{ memberId: "b".repeat(32) }, "portal_mismatch"],
+    [{ clientEndpoint: "https://renamed.example/rest/" }, "portal_origin_mismatch"],
+    [{ scope: ["user"] }, "oauth_metadata_drift"],
+    [{ expiresIn: undefined, expiresAt: undefined }, "oauth_metadata_drift"],
+    [{ expiresIn: 0 }, "oauth_metadata_drift"],
+    [{ userId: "different-provider-user" }, "provider_identity_mismatch"],
+  ])("blocks refreshed authorization drift: %s", async (override, reasonCode) => {
+    const client = new FakeIdentityClient();
+    client.refreshedAuthorization = { ...refreshedAuthorization, ...override };
+    const { runtime } = makeRuntime(client);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+
+    await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
+    expect(client.refreshTokenPair).toHaveBeenCalledOnce();
+    expect(client.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ scope: [] }, "oauth_metadata_drift"],
+    [{ expiresIn: undefined, expiresAt: undefined }, "oauth_metadata_drift"],
+    [{ expiresIn: 0 }, "oauth_metadata_drift"],
+  ])("blocks invalid initial authorization metadata: %s", async (override, reasonCode) => {
+    const client = new FakeIdentityClient();
+    client.authorization = { ...authorization, ...override };
+    const { runtime } = makeRuntime(client);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+
+    await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
+    expect(client.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ userId: "provider-user" }, { userId: undefined }],
+    [{ userId: undefined }, { userId: "provider-user" }],
+  ] as const)(
+    "requires current user to match every available initial or refresh provider ID",
+    async (initialOverride, refreshOverride) => {
+      const client = new FakeIdentityClient();
+      client.authorization = { ...authorization, ...initialOverride };
+      client.refreshedAuthorization = { ...refreshedAuthorization, ...refreshOverride };
+      client.currentUser = { id: "different-user", active: true, userType: "employee" };
+      const { runtime } = makeRuntime(client);
+      if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+      const state = runtime.stateStore.issue();
+      const response = await handleOAuthSpikeCallback(
+        new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+        runtime,
+      );
+
+      await expect(response.json()).resolves.toEqual({
+        status: "error",
+        reasonCode: "provider_identity_mismatch",
+      });
+    },
+  );
 
   it("parses a realistic ONAPPINSTALL payload and returns only a general success", async () => {
     const { runtime, logEntries } = makeInstallRuntime();

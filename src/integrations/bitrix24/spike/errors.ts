@@ -8,6 +8,7 @@ export type OAuthSpikeReasonCode =
   | "invalid_state"
   | "expired_state"
   | "reused_state"
+  | "state_generation_failed"
   | "token_exchange_failed"
   | "portal_mismatch"
   | "portal_origin_mismatch"

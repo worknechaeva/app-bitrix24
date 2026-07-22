@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Bitrix24OAuthResult } from "@/integrations/bitrix24/identity-client";
 import { canonicalPortalOriginFromClientEndpoint } from "@/integrations/bitrix24/portal-origin";
 import {
+  verifyOAuthSpikeAuthorizationResult,
   verifyOAuthSpikePortalIdentity,
   verifyOAuthSpikeRefreshResult,
 } from "@/integrations/bitrix24/spike/portal-identity";
@@ -74,11 +75,13 @@ describe("Bitrix24 portal identity", () => {
       expiresAt: 1_800_000_000,
       expiresIn: 3600,
       scope: ["basic", "user_brief"],
+      userId: "7",
     };
     const baseline = {
       memberId,
       canonicalPortalOrigin: "https://portal.example",
       scope: ["user_brief", "basic"],
+      userId: "7",
     };
 
     expect(verifyOAuthSpikeRefreshResult(refresh, baseline)).toEqual({
@@ -103,5 +106,39 @@ describe("Bitrix24 portal identity", () => {
         baseline,
       ),
     ).toThrowError(expect.objectContaining({ reasonCode: "portal_origin_mismatch" }));
+    expect(() => verifyOAuthSpikeRefreshResult({ ...refresh, userId: "8" }, baseline)).toThrowError(
+      expect.objectContaining({ reasonCode: "provider_identity_mismatch" }),
+    );
+  });
+
+  it("normalizes and validates initial scope and expiry metadata", () => {
+    const authorization: Bitrix24OAuthResult = {
+      accessToken: "access",
+      refreshToken: "refresh",
+      memberId,
+      clientEndpoint: "https://portal.example/rest/",
+      expiresIn: 3600,
+      scope: [" user_brief ", "basic", "user_brief"],
+    };
+
+    expect(verifyOAuthSpikeAuthorizationResult(authorization, memberId, "https://portal.example")).toEqual({
+      memberIdMatches: true,
+      canonicalPortalOrigin: "https://portal.example",
+      scope: ["basic", "user_brief"],
+    });
+    expect(() =>
+      verifyOAuthSpikeAuthorizationResult(
+        { ...authorization, scope: [] },
+        memberId,
+        "https://portal.example",
+      ),
+    ).toThrowError(expect.objectContaining({ reasonCode: "oauth_metadata_drift" }));
+    expect(() =>
+      verifyOAuthSpikeAuthorizationResult(
+        { ...authorization, scope: ["user_brief\nunsafe=value"] },
+        memberId,
+        "https://portal.example",
+      ),
+    ).toThrowError(expect.objectContaining({ reasonCode: "oauth_metadata_drift" }));
   });
 });
