@@ -25,7 +25,6 @@ const config = {
   clientId: "local.test",
   clientSecret: "synthetic-client-secret",
   redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
-  scopes: ["user_brief"],
   tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
 };
 
@@ -55,7 +54,10 @@ describe("SpikeBitrix24IdentityClient", () => {
     expect(result.origin).toBe("https://portal.example");
     expect(result.searchParams.get("client_id")).toBe("local.test");
     expect(result.searchParams.get("state")).toBe("state");
-    expect(result.searchParams.get("scope")).toBe("user_brief");
+    expect(result.searchParams.get("scope")).toBeNull();
+    expect(result.searchParams.get("client_secret")).toBeNull();
+    expect(result.searchParams.get("redirect_uri")).toBeNull();
+    expect([...result.searchParams.keys()].sort()).toEqual(["client_id", "state"]);
     expect(result.toString()).not.toContain(config.clientSecret);
   });
 

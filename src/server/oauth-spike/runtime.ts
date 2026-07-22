@@ -56,7 +56,6 @@ export function getOAuthSpikeUserRuntime(): OAuthSpikeUserRuntime {
           clientId: config.clientId,
           clientSecret: config.clientSecret,
           redirectUri: config.redirectUri,
-          scopes: config.scopes,
           tokenEndpoint: config.tokenEndpoint,
         },
         transport,

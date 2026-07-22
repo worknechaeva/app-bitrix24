@@ -9,7 +9,7 @@ const validEnvironment = {
   BITRIX24_OAUTH_SPIKE_CLIENT_ID: "local.test",
   BITRIX24_OAUTH_SPIKE_CLIENT_SECRET: "synthetic-secret",
   BITRIX24_OAUTH_SPIKE_REDIRECT_URI: "https://harness.example/api/bitrix24/oauth/callback",
-  BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief",
+  BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_brief",
   BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: "https://oauth.bitrix.info/oauth/token/",
 };
 
@@ -18,23 +18,17 @@ describe("OAuth spike environment", () => {
     expect(parseOAuthSpikeUserConfig(validEnvironment, "development")).toMatchObject({
       enabled: true,
       portalOrigin: "https://portal.example",
-      scopes: ["user_brief"],
+      scopeHypothesis: "user_brief",
     });
   });
 
-  it.each(["user_brief", "user_basic", "user"])("accepts exactly one user scope: %s", (scope) => {
-    expect(
-      parseOAuthSpikeUserConfig({ ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPES: scope }, "development"),
-    ).toMatchObject({ enabled: true, scopes: [scope] });
-  });
-
-  it("allows optional basic alongside one user scope", () => {
+  it.each(["user_brief", "user"])("accepts the scope hypothesis %s", (scopeHypothesis) => {
     expect(
       parseOAuthSpikeUserConfig(
-        { ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPES: "user,basic" },
+        { ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: scopeHypothesis },
         "development",
       ),
-    ).toMatchObject({ enabled: true, scopes: ["user", "basic"] });
+    ).toMatchObject({ enabled: true, scopeHypothesis });
   });
 
   it("enables install bootstrap with only the exact dev/test flag", () => {
@@ -61,16 +55,15 @@ describe("OAuth spike environment", () => {
   });
 
   it.each([
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "basic" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,user_basic" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,user" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user,user" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,task" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,tasks" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "crm" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,webhook" },
-    { BITRIX24_OAUTH_SPIKE_SCOPES: "user_brief,unknown" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_basic" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "basic" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_brief,user" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "task" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "tasks" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "crm" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "webhook" },
+    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "unknown" },
     { BITRIX24_OAUTH_SPIKE_REDIRECT_URI: "https://evil.example/api/bitrix24/oauth/callback" },
     { BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: "https://evil.example/oauth/token/" },
     { BITRIX24_OAUTH_SPIKE_PORTAL_ORIGIN: "https://portal.example:8443" },

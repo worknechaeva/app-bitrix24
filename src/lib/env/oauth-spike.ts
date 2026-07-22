@@ -5,8 +5,9 @@ import { canonicalPortalOriginFromConfiguredOrigin } from "@/integrations/bitrix
 import { OAuthSpikeError } from "@/integrations/bitrix24/spike/errors";
 
 const OFFICIAL_TOKEN_ENDPOINT = "https://oauth.bitrix.info/oauth/token/";
-const USER_SCOPES = new Set(["user_brief", "user_basic", "user"]);
-const ALLOWED_SCOPES = new Set(["basic", ...USER_SCOPES]);
+const scopeHypothesisSchema = z.enum(["user_brief", "user"]);
+
+export type OAuthSpikeScopeHypothesis = z.infer<typeof scopeHypothesisSchema>;
 
 export type OAuthSpikeInstallConfig = { enabled: true } | { enabled: false };
 
@@ -18,7 +19,7 @@ export type OAuthSpikeUserEnabledConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scopes: string[];
+  scopeHypothesis: OAuthSpikeScopeHypothesis;
   tokenEndpoint: string;
 };
 
@@ -33,7 +34,7 @@ const enabledEnvironmentSchema = z.object({
   BITRIX24_OAUTH_SPIKE_CLIENT_ID: z.string().min(1),
   BITRIX24_OAUTH_SPIKE_CLIENT_SECRET: z.string().min(1),
   BITRIX24_OAUTH_SPIKE_REDIRECT_URI: z.string().min(1),
-  BITRIX24_OAUTH_SPIKE_SCOPES: z.string().min(1),
+  BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: scopeHypothesisSchema,
   BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: z.string().min(1),
 });
 
@@ -80,9 +81,6 @@ export function parseOAuthSpikeUserConfig(
       parsed.data.BITRIX24_OAUTH_SPIKE_PORTAL_ORIGIN,
     );
     const redirectUri = new URL(parsed.data.BITRIX24_OAUTH_SPIKE_REDIRECT_URI);
-    const scopes = parsed.data.BITRIX24_OAUTH_SPIKE_SCOPES.split(/[\s,]+/).filter(Boolean);
-    const userScopes = scopes.filter((scope) => USER_SCOPES.has(scope));
-
     if (
       redirectUri.protocol !== "https:" ||
       redirectUri.origin !== appOrigin ||
@@ -91,10 +89,6 @@ export function parseOAuthSpikeUserConfig(
       redirectUri.search !== "" ||
       redirectUri.hash !== "" ||
       redirectUri.pathname !== "/api/bitrix24/oauth/callback" ||
-      scopes.length === 0 ||
-      new Set(scopes).size !== scopes.length ||
-      userScopes.length !== 1 ||
-      scopes.some((scope) => !ALLOWED_SCOPES.has(scope)) ||
       parsed.data.BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT !== OFFICIAL_TOKEN_ENDPOINT
     ) {
       throw new OAuthSpikeError("invalid_configuration");
@@ -108,7 +102,7 @@ export function parseOAuthSpikeUserConfig(
       clientId: parsed.data.BITRIX24_OAUTH_SPIKE_CLIENT_ID,
       clientSecret: parsed.data.BITRIX24_OAUTH_SPIKE_CLIENT_SECRET,
       redirectUri: redirectUri.toString(),
-      scopes,
+      scopeHypothesis: parsed.data.BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS,
       tokenEndpoint: OFFICIAL_TOKEN_ENDPOINT,
     };
   } catch {

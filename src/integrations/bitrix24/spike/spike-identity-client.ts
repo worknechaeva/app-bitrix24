@@ -44,7 +44,6 @@ export type SpikeBitrix24IdentityClientConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scopes: string[];
   tokenEndpoint: string;
 };
 
@@ -62,7 +61,6 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     const url = new URL("/oauth/authorize/", this.config.portalOrigin);
     url.searchParams.set("client_id", this.config.clientId);
     url.searchParams.set("state", input.state);
-    url.searchParams.set("scope", this.config.scopes.join(","));
     return url.toString();
   }
 

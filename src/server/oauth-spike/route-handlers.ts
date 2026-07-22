@@ -108,6 +108,7 @@ export async function handleOAuthSpikeCallback(
       authorization,
       runtime.config.expectedMemberId,
       runtime.config.portalOrigin,
+      runtime.config.scopeHypothesis,
     );
     const refreshedAuthorization = await runtime.identityClient.refreshTokenPair({
       refreshToken: authorization.refreshToken,
@@ -116,6 +117,7 @@ export async function handleOAuthSpikeCallback(
       memberId: authorization.memberId,
       canonicalPortalOrigin: initialAuthorization.canonicalPortalOrigin,
       scope: initialAuthorization.scope,
+      scopeHypothesis: runtime.config.scopeHypothesis,
       userId: authorization.userId,
     });
     const currentUser = await runtime.identityClient.getCurrentUser({
@@ -135,7 +137,9 @@ export async function handleOAuthSpikeCallback(
         reasonCode: admission.reasonCode,
         memberIdMatches: true,
         portalOrigin: portalIdentity.canonicalPortalOrigin,
-        scopes: initialAuthorization.scope.join(","),
+        scopeHypothesis: runtime.config.scopeHypothesis,
+        actualScopes: initialAuthorization.scope.join(","),
+        hypothesisMatched: true,
         refreshVerified: true,
       });
       return safeError(admission.reasonCode, 403);
@@ -146,7 +150,9 @@ export async function handleOAuthSpikeCallback(
       memberIdMatches: true,
       portalOrigin: portalIdentity.canonicalPortalOrigin,
       admission: "passed",
-      scopes: initialAuthorization.scope.join(","),
+      scopeHypothesis: runtime.config.scopeHypothesis,
+      actualScopes: initialAuthorization.scope.join(","),
+      hypothesisMatched: true,
       refreshVerified: true,
     });
     return safeJson({

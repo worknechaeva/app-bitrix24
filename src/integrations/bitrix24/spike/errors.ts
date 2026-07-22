@@ -15,6 +15,7 @@ export type OAuthSpikeReasonCode =
   | "invalid_client_endpoint"
   | "provider_identity_mismatch"
   | "oauth_metadata_drift"
+  | "scope_hypothesis_mismatch"
   | "inactive_user"
   | "external_user"
   | "unknown_user_type"

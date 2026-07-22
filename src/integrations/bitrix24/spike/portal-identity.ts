@@ -37,6 +37,7 @@ export type OAuthSpikeRefreshBaseline = {
   memberId: string;
   canonicalPortalOrigin: string;
   scope: string[];
+  scopeHypothesis: "user_brief" | "user";
   userId?: string;
 };
 
@@ -66,10 +67,15 @@ export function verifyOAuthSpikeAuthorizationResult(
   result: Bitrix24OAuthResult,
   expectedMemberId: string,
   configuredPortalOrigin: string,
+  scopeHypothesis: "user_brief" | "user",
 ): VerifiedOAuthSpikeAuthorization {
+  const scope = verifyOAuthSpikeTokenMetadata(result);
+  if (!scope.includes(scopeHypothesis)) {
+    throw new OAuthSpikeError("scope_hypothesis_mismatch");
+  }
   return {
     ...verifyOAuthSpikePortalIdentity(result, expectedMemberId, configuredPortalOrigin),
-    scope: verifyOAuthSpikeTokenMetadata(result),
+    scope,
   };
 }
 
@@ -81,6 +87,9 @@ export function verifyOAuthSpikeRefreshResult(
 
   const refreshedScope = verifyOAuthSpikeTokenMetadata(result);
   if (JSON.stringify(refreshedScope) !== JSON.stringify(normalizeOAuthSpikeScopes(baseline.scope))) {
+    throw new OAuthSpikeError("oauth_metadata_drift");
+  }
+  if (!refreshedScope.includes(baseline.scopeHypothesis)) {
     throw new OAuthSpikeError("oauth_metadata_drift");
   }
 

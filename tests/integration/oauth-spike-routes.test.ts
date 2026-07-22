@@ -70,7 +70,7 @@ function makeRuntime(client = new FakeIdentityClient()) {
       clientId: "local.test",
       clientSecret: "browser-must-not-see-client-secret",
       redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
-      scopes: ["user_brief"],
+      scopeHypothesis: "user_brief",
       tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
     },
     identityClient: client,
@@ -147,6 +147,10 @@ describe("OAuth spike route handlers", () => {
       accessToken: refreshedAuthorization.accessToken,
       clientEndpoint: refreshedAuthorization.clientEndpoint,
     });
+    expect(responseText).not.toContain("user_brief");
+    expect(logs).toContain('"scopeHypothesis":"user_brief"');
+    expect(logs).toContain('"actualScopes":"user_brief"');
+    expect(logs).toContain('"hypothesisMatched":true');
     for (const sensitiveValue of [
       authorization.accessToken,
       authorization.refreshToken,
@@ -335,6 +339,29 @@ describe("OAuth spike route handlers", () => {
     await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing initial scope hypothesis before refresh and admission", async () => {
+    const client = new FakeIdentityClient();
+    client.authorization = { ...authorization, scope: ["app", "basic"] };
+    const { runtime, logEntries } = makeRuntime(client);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+    const responseText = await response.text();
+
+    expect(JSON.parse(responseText)).toEqual({
+      status: "error",
+      reasonCode: "scope_hypothesis_mismatch",
+    });
+    expect(responseText).not.toContain("app");
+    expect(responseText).not.toContain("basic");
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
+    expect(client.getCurrentUser).not.toHaveBeenCalled();
+    expect(JSON.stringify(logEntries)).not.toContain(authorization.accessToken);
   });
 
   it.each([

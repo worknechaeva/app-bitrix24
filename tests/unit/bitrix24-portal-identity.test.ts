@@ -81,6 +81,7 @@ describe("Bitrix24 portal identity", () => {
       memberId,
       canonicalPortalOrigin: "https://portal.example",
       scope: ["user_brief", "basic"],
+      scopeHypothesis: "user_brief" as const,
       userId: "7",
     };
 
@@ -121,7 +122,9 @@ describe("Bitrix24 portal identity", () => {
       scope: [" user_brief ", "basic", "user_brief"],
     };
 
-    expect(verifyOAuthSpikeAuthorizationResult(authorization, memberId, "https://portal.example")).toEqual({
+    expect(
+      verifyOAuthSpikeAuthorizationResult(authorization, memberId, "https://portal.example", "user_brief"),
+    ).toEqual({
       memberIdMatches: true,
       canonicalPortalOrigin: "https://portal.example",
       scope: ["basic", "user_brief"],
@@ -131,6 +134,7 @@ describe("Bitrix24 portal identity", () => {
         { ...authorization, scope: [] },
         memberId,
         "https://portal.example",
+        "user_brief",
       ),
     ).toThrowError(expect.objectContaining({ reasonCode: "oauth_metadata_drift" }));
     expect(() =>
@@ -138,7 +142,16 @@ describe("Bitrix24 portal identity", () => {
         { ...authorization, scope: ["user_brief\nunsafe=value"] },
         memberId,
         "https://portal.example",
+        "user_brief",
       ),
     ).toThrowError(expect.objectContaining({ reasonCode: "oauth_metadata_drift" }));
+    expect(() =>
+      verifyOAuthSpikeAuthorizationResult(
+        { ...authorization, scope: ["basic", "app"] },
+        memberId,
+        "https://portal.example",
+        "user_brief",
+      ),
+    ).toThrowError(expect.objectContaining({ reasonCode: "scope_hypothesis_mismatch" }));
   });
 });
