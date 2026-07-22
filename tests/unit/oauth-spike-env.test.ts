@@ -9,7 +9,8 @@ const validEnvironment = {
   BITRIX24_OAUTH_SPIKE_CLIENT_ID: "local.test",
   BITRIX24_OAUTH_SPIKE_CLIENT_SECRET: "synthetic-secret",
   BITRIX24_OAUTH_SPIKE_REDIRECT_URI: "https://harness.example/api/bitrix24/oauth/callback",
-  BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_brief",
+  BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: "app",
+  BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "user_brief",
   BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: "https://oauth.bitrix.info/oauth/token/",
 };
 
@@ -18,17 +19,18 @@ describe("OAuth spike environment", () => {
     expect(parseOAuthSpikeUserConfig(validEnvironment, "development")).toMatchObject({
       enabled: true,
       portalOrigin: "https://portal.example",
-      scopeHypothesis: "user_brief",
+      tokenScopeHypothesis: "app",
+      permissionHypothesis: "user_brief",
     });
   });
 
-  it.each(["user_brief", "user"])("accepts the scope hypothesis %s", (scopeHypothesis) => {
+  it.each(["user_brief", "user"])("accepts the permission hypothesis %s", (permissionHypothesis) => {
     expect(
       parseOAuthSpikeUserConfig(
-        { ...validEnvironment, BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: scopeHypothesis },
+        { ...validEnvironment, BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: permissionHypothesis },
         "development",
       ),
-    ).toMatchObject({ enabled: true, scopeHypothesis });
+    ).toMatchObject({ enabled: true, tokenScopeHypothesis: "app", permissionHypothesis });
   });
 
   it("enables install bootstrap with only the exact dev/test flag", () => {
@@ -55,15 +57,21 @@ describe("OAuth spike environment", () => {
   });
 
   it.each([
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_basic" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "basic" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_brief,user" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "task" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "tasks" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "crm" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "webhook" },
-    { BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "unknown" },
+    { BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: "" },
+    { BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: "user_brief" },
+    { BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: "basic" },
+    { BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: "APP" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "user_basic" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "basic" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "user_brief,user" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "task" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "tasks" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "crm" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "webhook" },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: "unknown" },
+    { BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: undefined },
+    { BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: undefined },
     { BITRIX24_OAUTH_SPIKE_REDIRECT_URI: "https://evil.example/api/bitrix24/oauth/callback" },
     { BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: "https://evil.example/oauth/token/" },
     { BITRIX24_OAUTH_SPIKE_PORTAL_ORIGIN: "https://portal.example:8443" },
@@ -71,5 +79,19 @@ describe("OAuth spike environment", () => {
     expect(() => parseOAuthSpikeUserConfig({ ...validEnvironment, ...override }, "development")).toThrowError(
       expect.objectContaining({ reasonCode: "invalid_configuration" }),
     );
+  });
+
+  it("does not accept the legacy scope hypothesis in place of the split configuration", () => {
+    expect(() =>
+      parseOAuthSpikeUserConfig(
+        {
+          ...validEnvironment,
+          BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: undefined,
+          BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: undefined,
+          BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: "user_brief",
+        },
+        "development",
+      ),
+    ).toThrowError(expect.objectContaining({ reasonCode: "invalid_configuration" }));
   });
 });

@@ -25,7 +25,7 @@ const authorization: Bitrix24OAuthResult = {
   memberId: expectedMemberId,
   clientEndpoint: "https://portal.example/rest/",
   expiresIn: 3600,
-  scope: ["user_brief"],
+  scope: ["app"],
   userId: "browser-must-not-see-user-id",
 };
 const refreshedAuthorization: Bitrix24OAuthResult = {
@@ -72,6 +72,7 @@ class FakeIdentityClient implements Bitrix24IdentityClient {
   };
   exchangeError?: unknown;
   refreshError?: unknown;
+  applicationPermissions = ["user_brief"];
   readonly exchangeAuthorizationCode = vi.fn(async () => {
     if (this.exchangeError) throw this.exchangeError;
     return this.authorization;
@@ -80,6 +81,7 @@ class FakeIdentityClient implements Bitrix24IdentityClient {
     if (this.refreshError) throw this.refreshError;
     return this.refreshedAuthorization;
   });
+  readonly getApplicationPermissions = vi.fn(async () => this.applicationPermissions);
   readonly getCurrentUser = vi.fn(async () => this.currentUser);
 
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string {
@@ -103,7 +105,8 @@ function makeRuntime(client: Bitrix24IdentityClient = new FakeIdentityClient()) 
       clientId: "local.test",
       clientSecret: "browser-must-not-see-client-secret",
       redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
-      scopeHypothesis: "user_brief",
+      tokenScopeHypothesis: "app",
+      permissionHypothesis: "user_brief",
       tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
     },
     identityClient: client,
@@ -131,11 +134,13 @@ function makeDiagnosticRuntime(responses: OAuthSpikeHttpResponse[]) {
       clientId: "local.test",
       clientSecret: "browser-must-not-see-client-secret",
       redirectUri: "https://harness.example/api/bitrix24/oauth/callback",
-      scopeHypothesis: "user_brief",
+      tokenScopeHypothesis: "app",
+      permissionHypothesis: "user_brief",
       tokenEndpoint: "https://oauth.bitrix.info/oauth/token/",
     },
     transport,
     (diagnostic) => logger.info("bitrix24_oauth_spike_scope_diagnostic", { ...diagnostic }),
+    (diagnostic) => logger.info("bitrix24_oauth_spike_permission_diagnostic", { ...diagnostic }),
   );
   const { runtime } = makeRuntime(client);
   if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
@@ -202,14 +207,19 @@ describe("OAuth spike route handlers", () => {
     expect(client.refreshTokenPair).toHaveBeenCalledWith({
       refreshToken: authorization.refreshToken,
     });
+    expect(client.getApplicationPermissions).toHaveBeenCalledWith({
+      accessToken: refreshedAuthorization.accessToken,
+      clientEndpoint: refreshedAuthorization.clientEndpoint,
+    });
     expect(client.getCurrentUser).toHaveBeenCalledWith({
       accessToken: refreshedAuthorization.accessToken,
       clientEndpoint: refreshedAuthorization.clientEndpoint,
     });
     expect(responseText).not.toContain("user_brief");
-    expect(logs).toContain('"scopeHypothesis":"user_brief"');
-    expect(logs).toContain('"actualScopes":"user_brief"');
-    expect(logs).toContain('"hypothesisMatched":true');
+    expect(logs).toContain('"tokenScopeHypothesis":"app"');
+    expect(logs).toContain('"actualTokenScopes":"app"');
+    expect(logs).toContain('"permissionHypothesis":"user_brief"');
+    expect(logs).toContain('"actualPermissions":"user_brief"');
     for (const sensitiveValue of [
       authorization.accessToken,
       authorization.refreshToken,
@@ -377,6 +387,7 @@ describe("OAuth spike route handlers", () => {
 
     await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
     expect(client.refreshTokenPair).toHaveBeenCalledOnce();
+    expect(client.getApplicationPermissions).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
   });
 
@@ -402,7 +413,7 @@ describe("OAuth spike route handlers", () => {
 
   it("rejects a missing initial scope hypothesis before refresh and admission", async () => {
     const client = new FakeIdentityClient();
-    client.authorization = { ...authorization, scope: ["app", "basic"] };
+    client.authorization = { ...authorization, scope: ["basic", "user_brief"] };
     const { runtime, logEntries } = makeRuntime(client);
     if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
     const state = runtime.stateStore.issue();
@@ -419,12 +430,13 @@ describe("OAuth spike route handlers", () => {
     expect(responseText).not.toContain("app");
     expect(responseText).not.toContain("basic");
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
+    expect(client.getApplicationPermissions).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
     expect(JSON.stringify(logEntries)).not.toContain(authorization.accessToken);
   });
 
   it("logs a sanitized initial scope mismatch before refresh", async () => {
-    const initialResponse = tokenResponse(" app, basic app ", "initial");
+    const initialResponse = tokenResponse(" basic user_brief ", "initial");
     const { runtime, transport, logEntries } = makeDiagnosticRuntime([
       { ok: true, status: 200, body: initialResponse },
     ]);
@@ -449,8 +461,8 @@ describe("OAuth spike route handlers", () => {
           scopePresent: true,
           scopeType: "string",
           normalizedScopeCount: 2,
-          normalizedScopes: ["app", "basic"],
-          hypothesis: "user_brief",
+          normalizedScopes: ["basic", "user_brief"],
+          tokenScopeHypothesis: "app",
           hypothesisMatched: false,
         },
       },
@@ -471,11 +483,12 @@ describe("OAuth spike route handlers", () => {
   });
 
   it("logs separate initial and refresh diagnostics on a successful callback", async () => {
-    const initialResponse = tokenResponse("user_brief,basic", "initial");
-    const refreshResponse = tokenResponse(" basic user_brief ", "refresh");
+    const initialResponse = tokenResponse("app,basic", "initial");
+    const refreshResponse = tokenResponse(" basic app ", "refresh");
     const { runtime, transport, logEntries } = makeDiagnosticRuntime([
       { ok: true, status: 200, body: initialResponse },
       { ok: true, status: 200, body: refreshResponse },
+      { ok: true, status: 200, body: { result: ["user_brief"] } },
       {
         ok: true,
         status: 200,
@@ -497,17 +510,20 @@ describe("OAuth spike route handlers", () => {
       runtime,
     );
     const diagnostics = logEntries.filter((entry) => entry.event === "bitrix24_oauth_spike_scope_diagnostic");
+    const permissionDiagnostics = logEntries.filter(
+      (entry) => entry.event === "bitrix24_oauth_spike_permission_diagnostic",
+    );
 
     expect(response.status).toBe(200);
-    expect(transport.calls).toHaveLength(3);
+    expect(transport.calls).toHaveLength(4);
     expect(diagnostics.map((entry) => entry.details)).toEqual([
       {
         stage: "initial",
         scopePresent: true,
         scopeType: "string",
         normalizedScopeCount: 2,
-        normalizedScopes: ["basic", "user_brief"],
-        hypothesis: "user_brief",
+        normalizedScopes: ["app", "basic"],
+        tokenScopeHypothesis: "app",
         hypothesisMatched: true,
       },
       {
@@ -515,17 +531,121 @@ describe("OAuth spike route handlers", () => {
         scopePresent: true,
         scopeType: "string",
         normalizedScopeCount: 2,
-        normalizedScopes: ["basic", "user_brief"],
-        hypothesis: "user_brief",
+        normalizedScopes: ["app", "basic"],
+        tokenScopeHypothesis: "app",
         hypothesisMatched: true,
       },
     ]);
+    expect(permissionDiagnostics.map((entry) => entry.details)).toEqual([
+      {
+        stage: "post_refresh",
+        permissionPresent: true,
+        permissionResponseType: "array",
+        normalizedPermissionCount: 1,
+        normalizedPermissions: ["user_brief"],
+        permissionHypothesis: "user_brief",
+        hypothesisMatched: true,
+      },
+    ]);
+    expect(transport.calls[2]?.url).toBe("https://portal.example/rest/scope");
+    expect(transport.calls[2]?.body.get("auth")).toBe(refreshResponse.access_token);
+    expect(transport.calls[3]?.url).toBe("https://portal.example/rest/user.current");
+    expect(transport.calls[3]?.body.get("auth")).toBe(refreshResponse.access_token);
+    const safePermissionLog = JSON.stringify(permissionDiagnostics);
+    for (const forbiddenValue of [
+      initialResponse.access_token,
+      initialResponse.refresh_token,
+      refreshResponse.access_token,
+      refreshResponse.refresh_token,
+      refreshResponse.user_id,
+      runtime.config.clientSecret,
+      runtime.config.portalOrigin,
+      refreshResponse.client_endpoint,
+      JSON.stringify(refreshResponse),
+    ]) {
+      expect(safePermissionLog).not.toContain(forbiddenValue);
+    }
+  });
+
+  it("stops before user admission when the application permission hypothesis is missing", async () => {
+    const client = new FakeIdentityClient();
+    client.applicationPermissions = ["app", "user"];
+    const { runtime, logEntries } = makeRuntime(client);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      status: "error",
+      reasonCode: "permission_hypothesis_mismatch",
+    });
+    expect(client.refreshTokenPair).toHaveBeenCalledOnce();
+    expect(client.getApplicationPermissions).toHaveBeenCalledWith({
+      accessToken: refreshedAuthorization.accessToken,
+      clientEndpoint: refreshedAuthorization.clientEndpoint,
+    });
+    expect(client.getCurrentUser).not.toHaveBeenCalled();
+    expect(JSON.stringify(logEntries)).not.toContain(refreshedAuthorization.accessToken);
+  });
+
+  it("stops before user admission when the application permission response is malformed", async () => {
+    const initialResponse = tokenResponse("app", "malformed-initial");
+    const refreshResponse = tokenResponse("app", "malformed-refresh");
+    const malformedPermissionResponse = { result: ["user_brief", 123], time: {} };
+    const { runtime, transport, logEntries } = makeDiagnosticRuntime([
+      { ok: true, status: 200, body: initialResponse },
+      { ok: true, status: 200, body: refreshResponse },
+      { ok: true, status: 200, body: malformedPermissionResponse },
+    ]);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const code = "browser-must-not-see-malformed-code";
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=${code}`),
+      runtime,
+    );
+    const responseBody = await response.json();
+    const logs = JSON.stringify(logEntries);
+
+    expect(response.status).toBe(502);
+    expect(responseBody).toEqual({ status: "error", reasonCode: "provider_unavailable" });
+    expect(responseBody).not.toMatchObject({ reasonCode: "permission_hypothesis_mismatch" });
+    expect(transport.calls).toHaveLength(3);
+    expect(transport.calls.map((call) => call.url)).toEqual([
+      "https://oauth.bitrix.info/oauth/token/",
+      "https://oauth.bitrix.info/oauth/token/",
+      "https://portal.example/rest/scope",
+    ]);
+    expect(transport.calls.some((call) => call.url.endsWith("/user.current"))).toBe(false);
+    expect(transport.calls.some((call) => call.url.endsWith("/user.get"))).toBe(false);
+    expect(logEntries.at(-1)).toEqual({
+      event: "bitrix24_oauth_spike_callback",
+      details: { status: "error", reasonCode: "provider_unavailable" },
+    });
+    for (const sensitiveValue of [
+      initialResponse.access_token,
+      initialResponse.refresh_token,
+      refreshResponse.access_token,
+      refreshResponse.refresh_token,
+      initialResponse.user_id,
+      refreshResponse.user_id,
+      code,
+      state,
+      runtime.config.clientSecret,
+      JSON.stringify(malformedPermissionResponse),
+    ]) {
+      expect(logs).not.toContain(sensitiveValue);
+    }
   });
 
   it("logs refresh diagnostics before rejecting scope drift", async () => {
     const { runtime, transport, logEntries } = makeDiagnosticRuntime([
-      { ok: true, status: 200, body: tokenResponse("user_brief,basic", "initial") },
-      { ok: true, status: 200, body: tokenResponse("user_brief", "refresh") },
+      { ok: true, status: 200, body: tokenResponse("app,basic", "initial") },
+      { ok: true, status: 200, body: tokenResponse("app", "refresh") },
     ]);
     if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
     const state = runtime.stateStore.issue();
@@ -543,7 +663,7 @@ describe("OAuth spike route handlers", () => {
     expect(diagnostics.map((entry) => entry.details.stage)).toEqual(["initial", "refresh"]);
     expect(diagnostics[0]?.details.hypothesisMatched).toBe(true);
     expect(diagnostics[1]?.details).toMatchObject({
-      normalizedScopes: ["user_brief"],
+      normalizedScopes: ["app"],
       hypothesisMatched: true,
     });
   });

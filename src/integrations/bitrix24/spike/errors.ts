@@ -16,6 +16,7 @@ export type OAuthSpikeReasonCode =
   | "provider_identity_mismatch"
   | "oauth_metadata_drift"
   | "scope_hypothesis_mismatch"
+  | "permission_hypothesis_mismatch"
   | "inactive_user"
   | "external_user"
   | "unknown_user_type"

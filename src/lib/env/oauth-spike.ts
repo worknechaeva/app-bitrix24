@@ -5,9 +5,11 @@ import { canonicalPortalOriginFromConfiguredOrigin } from "@/integrations/bitrix
 import { OAuthSpikeError } from "@/integrations/bitrix24/spike/errors";
 
 const OFFICIAL_TOKEN_ENDPOINT = "https://oauth.bitrix.info/oauth/token/";
-const scopeHypothesisSchema = z.enum(["user_brief", "user"]);
+const tokenScopeHypothesisSchema = z.literal("app");
+const permissionHypothesisSchema = z.enum(["user_brief", "user"]);
 
-export type OAuthSpikeScopeHypothesis = z.infer<typeof scopeHypothesisSchema>;
+export type OAuthSpikeTokenScopeHypothesis = z.infer<typeof tokenScopeHypothesisSchema>;
+export type OAuthSpikePermissionHypothesis = z.infer<typeof permissionHypothesisSchema>;
 
 export type OAuthSpikeInstallConfig = { enabled: true } | { enabled: false };
 
@@ -19,7 +21,8 @@ export type OAuthSpikeUserEnabledConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scopeHypothesis: OAuthSpikeScopeHypothesis;
+  tokenScopeHypothesis: OAuthSpikeTokenScopeHypothesis;
+  permissionHypothesis: OAuthSpikePermissionHypothesis;
   tokenEndpoint: string;
 };
 
@@ -34,7 +37,8 @@ const enabledEnvironmentSchema = z.object({
   BITRIX24_OAUTH_SPIKE_CLIENT_ID: z.string().min(1),
   BITRIX24_OAUTH_SPIKE_CLIENT_SECRET: z.string().min(1),
   BITRIX24_OAUTH_SPIKE_REDIRECT_URI: z.string().min(1),
-  BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS: scopeHypothesisSchema,
+  BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS: tokenScopeHypothesisSchema,
+  BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS: permissionHypothesisSchema,
   BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT: z.string().min(1),
 });
 
@@ -102,7 +106,8 @@ export function parseOAuthSpikeUserConfig(
       clientId: parsed.data.BITRIX24_OAUTH_SPIKE_CLIENT_ID,
       clientSecret: parsed.data.BITRIX24_OAUTH_SPIKE_CLIENT_SECRET,
       redirectUri: redirectUri.toString(),
-      scopeHypothesis: parsed.data.BITRIX24_OAUTH_SPIKE_SCOPE_HYPOTHESIS,
+      tokenScopeHypothesis: parsed.data.BITRIX24_OAUTH_SPIKE_TOKEN_SCOPE_HYPOTHESIS,
+      permissionHypothesis: parsed.data.BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS,
       tokenEndpoint: OFFICIAL_TOKEN_ENDPOINT,
     };
   } catch {

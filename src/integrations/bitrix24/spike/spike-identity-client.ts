@@ -2,6 +2,13 @@ import "server-only";
 
 import { z } from "zod";
 import type { Bitrix24CurrentUser, Bitrix24IdentityClient, Bitrix24OAuthResult } from "../identity-client";
+import {
+  MAX_OAUTH_SPIKE_PERMISSION_COUNT,
+  MAX_OAUTH_SPIKE_PERMISSION_NAME_LENGTH,
+  normalizeOAuthSpikePermissions,
+  SAFE_OAUTH_SPIKE_PERMISSION_NAME,
+  validateOAuthSpikePermissions,
+} from "./application-permissions";
 import { OAuthSpikeError } from "./errors";
 import type { OAuthSpikeHttpTransport } from "./http-transport";
 import { normalizeOAuthSpikeScopes } from "./portal-identity";
@@ -17,8 +24,12 @@ const tokenResponseSchema = z.object({
   client_endpoint: z.string().min(1),
   expires: z.coerce.number().finite().positive().optional(),
   expires_in: z.coerce.number().finite().positive().optional(),
-  scope: z.string().optional().default(""),
+  scope: z.string(),
   user_id: z.union([z.string(), z.number()]).transform(String).optional(),
+});
+
+const permissionResponseSchema = z.object({
+  result: z.array(z.string()),
 });
 
 const activeSchema = z
@@ -48,7 +59,8 @@ export type SpikeBitrix24IdentityClientConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  scopeHypothesis: "user_brief" | "user";
+  tokenScopeHypothesis: "app";
+  permissionHypothesis: "user_brief" | "user";
   tokenEndpoint: string;
 };
 
@@ -58,11 +70,23 @@ export type OAuthSpikeScopeDiagnostic = {
   scopeType: "missing" | "string" | "null" | "array" | "number" | "object" | "boolean" | "unknown";
   normalizedScopeCount: number;
   normalizedScopes: string[];
-  hypothesis: "user_brief" | "user";
+  tokenScopeHypothesis: "app";
+  hypothesisMatched: boolean;
+};
+
+export type OAuthSpikePermissionDiagnostic = {
+  stage: "post_refresh";
+  permissionPresent: boolean;
+  permissionResponseType:
+    "missing" | "string" | "null" | "array" | "number" | "object" | "boolean" | "unknown";
+  normalizedPermissionCount: number;
+  normalizedPermissions: string[];
+  permissionHypothesis: "user_brief" | "user";
   hypothesisMatched: boolean;
 };
 
 type OAuthSpikeScopeDiagnosticObserver = (diagnostic: OAuthSpikeScopeDiagnostic) => void;
+type OAuthSpikePermissionDiagnosticObserver = (diagnostic: OAuthSpikePermissionDiagnostic) => void;
 
 function classifyScopeType(value: unknown): OAuthSpikeScopeDiagnostic["scopeType"] {
   if (value === null) return "null";
@@ -77,7 +101,7 @@ function classifyScopeType(value: unknown): OAuthSpikeScopeDiagnostic["scopeType
 function createScopeDiagnostic(
   responseBody: unknown,
   stage: OAuthSpikeScopeDiagnostic["stage"],
-  hypothesis: OAuthSpikeScopeDiagnostic["hypothesis"],
+  hypothesis: OAuthSpikeScopeDiagnostic["tokenScopeHypothesis"],
 ): OAuthSpikeScopeDiagnostic {
   const scopePresent =
     typeof responseBody === "object" &&
@@ -100,8 +124,52 @@ function createScopeDiagnostic(
     scopeType,
     normalizedScopeCount: normalizedScopes.length,
     normalizedScopes: safeNormalizedScopes,
-    hypothesis,
+    tokenScopeHypothesis: hypothesis,
     hypothesisMatched: normalizedScopes.includes(hypothesis),
+  };
+}
+
+function createPermissionDiagnostic(
+  responseBody: unknown,
+  hypothesis: OAuthSpikePermissionDiagnostic["permissionHypothesis"],
+): OAuthSpikePermissionDiagnostic {
+  const permissionPresent =
+    typeof responseBody === "object" &&
+    responseBody !== null &&
+    Object.prototype.hasOwnProperty.call(responseBody, "result");
+  const rawPermissions = permissionPresent ? (responseBody as Record<string, unknown>).result : undefined;
+  const permissionResponseType = permissionPresent ? classifyScopeType(rawPermissions) : "missing";
+  const stringPermissions = Array.isArray(rawPermissions)
+    ? rawPermissions.filter((permission): permission is string => typeof permission === "string")
+    : [];
+  const normalizedPermissions = normalizeOAuthSpikePermissions(stringPermissions);
+  const permissionsValid =
+    Array.isArray(rawPermissions) &&
+    rawPermissions.every((permission) => typeof permission === "string") &&
+    normalizedPermissions.length > 0 &&
+    normalizedPermissions.length <= MAX_OAUTH_SPIKE_PERMISSION_COUNT &&
+    normalizedPermissions.every(
+      (permission) =>
+        permission.length <= MAX_OAUTH_SPIKE_PERMISSION_NAME_LENGTH &&
+        SAFE_OAUTH_SPIKE_PERMISSION_NAME.test(permission),
+    );
+  const safeNormalizedPermissions =
+    normalizedPermissions.length <= MAX_OAUTH_SPIKE_PERMISSION_COUNT
+      ? normalizedPermissions.filter(
+          (permission) =>
+            permission.length <= MAX_OAUTH_SPIKE_PERMISSION_NAME_LENGTH &&
+            SAFE_OAUTH_SPIKE_PERMISSION_NAME.test(permission),
+        )
+      : [];
+
+  return {
+    stage: "post_refresh",
+    permissionPresent,
+    permissionResponseType,
+    normalizedPermissionCount: normalizedPermissions.length,
+    normalizedPermissions: safeNormalizedPermissions,
+    permissionHypothesis: hypothesis,
+    hypothesisMatched: permissionsValid && normalizedPermissions.includes(hypothesis),
   };
 }
 
@@ -110,6 +178,7 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     private readonly config: SpikeBitrix24IdentityClientConfig,
     private readonly transport: OAuthSpikeHttpTransport,
     private readonly observeScopeDiagnostic: OAuthSpikeScopeDiagnosticObserver = () => undefined,
+    private readonly observePermissionDiagnostic: OAuthSpikePermissionDiagnosticObserver = () => undefined,
   ) {}
 
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string {
@@ -149,6 +218,20 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
         refresh_token: input.refreshToken,
       }),
     );
+  }
+
+  async getApplicationPermissions(input: { accessToken: string; clientEndpoint: string }): Promise<string[]> {
+    const response = await this.safePost(
+      new URL("scope", input.clientEndpoint),
+      new URLSearchParams({ auth: input.accessToken }),
+    );
+    this.observePermissionDiagnostic(
+      createPermissionDiagnostic(response.body, this.config.permissionHypothesis),
+    );
+    if (!response.ok) throw new OAuthSpikeError("provider_unavailable");
+    const parsed = permissionResponseSchema.safeParse(response.body);
+    if (!parsed.success) throw new OAuthSpikeError("provider_unavailable");
+    return validateOAuthSpikePermissions(parsed.data.result);
   }
 
   async getCurrentUser(input: { accessToken: string; clientEndpoint: string }): Promise<Bitrix24CurrentUser> {
@@ -210,7 +293,9 @@ export class SpikeBitrix24IdentityClient implements Bitrix24IdentityClient {
     if (!response.ok) {
       throw new OAuthSpikeError("token_exchange_failed");
     }
-    this.observeScopeDiagnostic(createScopeDiagnostic(response.body, stage, this.config.scopeHypothesis));
+    this.observeScopeDiagnostic(
+      createScopeDiagnostic(response.body, stage, this.config.tokenScopeHypothesis),
+    );
     const parsed = tokenResponseSchema.safeParse(response.body);
     if (!parsed.success) throw new OAuthSpikeError("token_exchange_failed");
 

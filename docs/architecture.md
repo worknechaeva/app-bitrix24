@@ -107,6 +107,7 @@ RPC размещаются вне публичной API-поверхности;
 - формирует OAuth URL;
 - обменивает authorization code;
 - атомарно обновляет access/refresh token pair;
+- получает доступные приложению права отдельным server-only вызовом;
 - получает current user;
 - возвращает проверенные `member_id`, domain, user ID, `ACTIVE` и `USER_TYPE`.
 

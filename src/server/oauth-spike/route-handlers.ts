@@ -1,6 +1,7 @@
 import "server-only";
 
 import { evaluateOAuthSpikeAdmission } from "@/integrations/bitrix24/spike/admission";
+import { verifyOAuthSpikePermissionHypothesis } from "@/integrations/bitrix24/spike/application-permissions";
 import {
   getSafeOAuthSpikeReason,
   OAuthSpikeError,
@@ -108,7 +109,7 @@ export async function handleOAuthSpikeCallback(
       authorization,
       runtime.config.expectedMemberId,
       runtime.config.portalOrigin,
-      runtime.config.scopeHypothesis,
+      runtime.config.tokenScopeHypothesis,
     );
     const refreshedAuthorization = await runtime.identityClient.refreshTokenPair({
       refreshToken: authorization.refreshToken,
@@ -117,9 +118,17 @@ export async function handleOAuthSpikeCallback(
       memberId: authorization.memberId,
       canonicalPortalOrigin: initialAuthorization.canonicalPortalOrigin,
       scope: initialAuthorization.scope,
-      scopeHypothesis: runtime.config.scopeHypothesis,
+      tokenScopeHypothesis: runtime.config.tokenScopeHypothesis,
       userId: authorization.userId,
     });
+    const applicationPermissions = await runtime.identityClient.getApplicationPermissions({
+      accessToken: refreshedAuthorization.accessToken,
+      clientEndpoint: refreshedAuthorization.clientEndpoint,
+    });
+    const verifiedPermissions = verifyOAuthSpikePermissionHypothesis(
+      applicationPermissions,
+      runtime.config.permissionHypothesis,
+    );
     const currentUser = await runtime.identityClient.getCurrentUser({
       accessToken: refreshedAuthorization.accessToken,
       clientEndpoint: refreshedAuthorization.clientEndpoint,
@@ -137,9 +146,10 @@ export async function handleOAuthSpikeCallback(
         reasonCode: admission.reasonCode,
         memberIdMatches: true,
         portalOrigin: portalIdentity.canonicalPortalOrigin,
-        scopeHypothesis: runtime.config.scopeHypothesis,
-        actualScopes: initialAuthorization.scope.join(","),
-        hypothesisMatched: true,
+        tokenScopeHypothesis: runtime.config.tokenScopeHypothesis,
+        actualTokenScopes: initialAuthorization.scope.join(","),
+        permissionHypothesis: runtime.config.permissionHypothesis,
+        actualPermissions: verifiedPermissions.join(","),
         refreshVerified: true,
       });
       return safeError(admission.reasonCode, 403);
@@ -150,9 +160,10 @@ export async function handleOAuthSpikeCallback(
       memberIdMatches: true,
       portalOrigin: portalIdentity.canonicalPortalOrigin,
       admission: "passed",
-      scopeHypothesis: runtime.config.scopeHypothesis,
-      actualScopes: initialAuthorization.scope.join(","),
-      hypothesisMatched: true,
+      tokenScopeHypothesis: runtime.config.tokenScopeHypothesis,
+      actualTokenScopes: initialAuthorization.scope.join(","),
+      permissionHypothesis: runtime.config.permissionHypothesis,
+      actualPermissions: verifiedPermissions.join(","),
       refreshVerified: true,
     });
     return safeJson({

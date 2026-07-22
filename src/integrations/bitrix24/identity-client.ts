@@ -24,5 +24,6 @@ export interface Bitrix24IdentityClient {
   createAuthorizationUrl(input: { state: string; redirectUri: string }): string;
   exchangeAuthorizationCode(input: { code: string; redirectUri: string }): Promise<Bitrix24OAuthResult>;
   refreshTokenPair(input: { refreshToken: string }): Promise<Bitrix24OAuthResult>;
+  getApplicationPermissions(input: { accessToken: string; clientEndpoint: string }): Promise<string[]>;
   getCurrentUser(input: { accessToken: string; clientEndpoint: string }): Promise<Bitrix24CurrentUser>;
 }
