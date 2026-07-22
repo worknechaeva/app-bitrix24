@@ -15,12 +15,12 @@
 ## DEC-002 — Серверная граница Bitrix24
 
 - **Дата:** 2026-07-20
-- **Статус:** Active
+- **Статус:** Superseded
 - **Контекст:** Webhook и REST-ответы нельзя раскрывать браузеру.
 - **Решение:** Bitrix24 доступен только через server-only интеграционный слой `Bitrix24Client`; UI использует внутренние DTO.
-- **Последствия:** Секреты и REST-поля не попадают во frontend; mock и live можно заменять независимо от UI.
+- **Последствия:** Общая server-only граница сохраняется, но единый контракт заменен разделением Identity, Directory и Task.
 - **Связанные QA-записи:** —
-- **Заменяет:** —
+- **Заменено:** DEC-022.
 
 ## DEC-003 — Интеграция первого milestone
 
@@ -87,7 +87,7 @@
 - **Дата:** 2026-07-20
 - **Статус:** Active
 - **Контекст:** UI выбора файлов нужен до подключения реального портала.
-- **Решение:** В текущем milestone выбор файлов работает в mock-режиме и сохраняет только безопасные метаданные; live-загрузка добавляется позднее.
+- **Решение:** В первом milestone выбор файлов работает в mock-режиме и сохраняет только безопасные метаданные; реальная загрузка файлов в Bitrix24 добавляется позднее.
 - **Последствия:** Бинарные данные не логируются и не входят в sanitized payload.
 - **Связанные QA-записи:** QA-014, QA-016, QA-017, QA-018.
 - **Заменяет:** —
@@ -108,19 +108,19 @@
 - **Статус:** Active
 - **Контекст:** Mock не может предоставлять актуальное состояние портала.
 - **Решение:** Получение актуального статуса и синхронизация истории с Bitrix24 выполняются в интеграционном milestone.
-- **Последствия:** Текущий milestone проверяет доменную модель на fixtures и mock-данных.
+- **Последствия:** До интеграционного milestone доменная модель проверяется на fixtures и mock-данных.
 - **Связанные QA-записи:** QA-008.
 - **Заменяет:** —
 
 ## DEC-012 — Управление проектами
 
 - **Дата:** 2026-07-20
-- **Статус:** Active
+- **Статус:** Superseded
 - **Контекст:** Изменение интеграционных настроек проекта является административной операцией.
 - **Решение:** Создавать, редактировать, включать и выключать проекты может только администратор.
-- **Последствия:** Проверка роли выполняется на сервере; редактор видит только доступные активные проекты.
+- **Последствия:** Это правило остается историей mock-модели первого milestone; постоянная модель использует персональные `launcher_projects`.
 - **Связанные QA-записи:** QA-010, QA-019.
-- **Заменяет:** —
+- **Заменено:** DEC-025.
 
 ## DEC-013 — Ручной повтор после timeout
 
@@ -135,12 +135,12 @@
 ## DEC-014 — Границы текущей пачки
 
 - **Дата:** 2026-07-20
-- **Статус:** Active
+- **Статус:** Superseded
 - **Контекст:** Сначала нужно стабилизировать mock UX и документацию.
 - **Решение:** Supabase и настоящий Bitrix24 не подключаются в текущей пачке изменений.
-- **Последствия:** CRUD, файлы, статусы и фильтры реализуются через mock-контракты с будущими адаптерами.
+- **Последствия:** Решение описывает завершенную пачку первого milestone; новые границы определены для Milestone 2.
 - **Связанные QA-записи:** QA-008, QA-010, QA-014.
-- **Заменяет:** —
+- **Заменено:** DEC-028.
 
 ## DEC-015 — Приоритет как project default
 
@@ -191,3 +191,93 @@
 - **Последствия:** Больше не действует; автоматический повтор все еще запрещен, но ручная попытка должна получить новый ключ.
 - **Связанные QA-записи:** QA-013.
 - **Заменено:** DEC-013.
+
+## DEC-020 — Bitrix24 OAuth и один портал на deployment
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Task Launcher является отдельным PWA для одного заранее настроенного облачного портала и должен создавать будущие задачи от имени вошедшего пользователя.
+- **Решение:** Приложение самостоятельно выполняет Bitrix24 OAuth. Один deployment и одна его database обслуживают ровно один portal `member_id`, допускается только одна активная portal installation; пользователь не выбирает портал. Войти могут только `ACTIVE=true`, `USER_TYPE=employee` связанного портала.
+- **Последствия:** Callback с другим `member_id` отклоняется до создания profile, app session и credentials и не сохраняет вторую installation. Canonical domain обновляется только после доверенной OAuth-проверки при прежнем `member_id`. Другой портал требует отдельного deployment и отдельной database/project configuration; конкретная SQL-реализация singleton constraint выбирается на этапе schema/migrations. Supabase Auth, email/password, публичная регистрация, invite, reset password, SMTP, Supabase Custom OAuth Provider и внутренний JWT не используются в Milestone 2.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-021 — Собственная app session
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** У пользователя нет Supabase Auth session или JWT, а Bitrix24 OAuth credentials нельзя передавать браузеру.
+- **Решение:** После успешного OAuth callback сервер выполняет session rotation и создает собственную сессию. Браузер получает только случайный непрозрачный token в cookie с production-флагами `HttpOnly`, `Secure` и `SameSite=Lax`; в `app_sessions` хранится только hash. OAuth state одноразово хранится как hash в `oauth_transactions`.
+- **Последствия:** Session token недоступен JavaScript, сырой token не хранится в БД, а cookie не содержит profile ID, Bitrix user ID, OAuth token или роль. Logout и блокировка profile отзывают серверные сессии; истекшие и отозванные записи очищаются технической процедурой. Return path разрешается только из безопасного набора внутренних маршрутов.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-022 — Разделение Bitrix24-контрактов
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Identity, справочные данные и создание задач имеют разные сроки подключения, права и риски.
+- **Решение:** Использовать отдельные server-only контракты `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`.
+- **Последствия:** Identity отвечает за OAuth и current user; Directory — за group/project/scrum и active employee; Task — за будущие операции с задачами. В Milestone 2 Task остается mock только в development/test, а production использует `DisabledBitrix24TaskClient`: mock не может записать `operation_status=success`, фиктивный `bitrix_task_id` не создается, а UI может скрыть или заблокировать submit либо получить безопасный результат `task_creation_disabled`.
+- **Связанные QA-записи:** —
+- **Заменяет:** DEC-002.
+
+## DEC-023 — Server-side authorization без user-scoped RLS
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Выбранная Auth-модель не выпускает конечному пользователю Supabase JWT.
+- **Решение:** `auth.uid()` не представляет пользователя Task Launcher, user-scoped Supabase RLS отсутствует. RLS и grants закрывают Data API для `anon` и `authenticated`; права проверяются через app session, server-only DAL, actor-aware repositories и узкие PostgreSQL RPC.
+- **Последствия:** Service-role обходит RLS и доступен только privileged database gateway. Actor profile ID из браузера не считается доверенным. Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-024 — Profiles, внутренние роли и первый administrator
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Локальные полномочия не должны зависеть от роли пользователя в Bitrix24 или Supabase Auth.
+- **Решение:** Profile имеет внутренний UUID и уникальность `portal_installation_id + bitrix_user_id`, не обязан быть связан с `auth.users` и при первом допустимом входе получает `editor`. Роли `administrator/editor` хранятся в Task Launcher.
+- **Последствия:** Administrator Task Launcher может повысить вошедшего employee независимо от прав в портале. Последнего активного administrator нельзя понизить, заблокировать или удалить. При `is_active=false` отзываются все app sessions, запрещается использование OAuth credentials и прекращаются новые Identity, Directory и Task вызовы от имени profile; история и launcher projects сохраняются. Credentials не разрешаются повторно автоматически без новой проверки identity и утвержденного recovery/reactivation flow. Первый administrator задается через server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`, назначается после OAuth-проверок один раз и фиксируется в `admin_bootstrapped_at`; персональный ID не попадает в Git.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-025 — Персональные launcher projects
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Локальная настройка быстрого создания задачи не является самой группой, проектом или Scrum Bitrix24.
+- **Решение:** Использовать сущность `launcher_projects` с owner. Каждый editor и administrator создает и редактирует собственные записи; editor видит свои, administrator видит все, но не редактирует чужие настройки и не меняет owner.
+- **Последствия:** Administrator архивирует и восстанавливает чужие записи только узкими RPC. Физического удаления нет. Несколько записей одного owner могут ссылаться на один `bitrix_entity_id`; unique только по нему запрещен. Восстановление фиксируется append-only audit event. Перед будущим вызовом live Task client сервер повторно проверяет, что связанная entity существует, остается `group`/`project`/`scrum`, active, не closed, не collab и не extranet-enabled, а OAuth-пользователь все еще имеет доступ и `create_tasks`; исполнитель должен существовать и оставаться `ACTIVE=true`, `USER_TYPE=employee`. При отказе Task client не вызывается, success не записывается, возвращается безопасная ошибка, а launcher project сохраняется и может получить access state `unavailable` или `unknown`.
+- **Связанные QA-записи:** QA-010, QA-019 как история прежней mock-модели.
+- **Заменяет:** DEC-012.
+
+## DEC-026 — Directory сотрудников и минимизация данных
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Исполнителем может быть сотрудник, который никогда не входил в Task Launcher, но внешние типы пользователей должны быть исключены.
+- **Решение:** Выбирать можно любого active employee связанного портала независимо от наличия profile. Поиск выполняется server-side с пагинацией и финальной проверкой `ACTIVE` и `USER_TYPE`.
+- **Последствия:** Без необходимости не запрашиваются email, телефоны, дата рождения, адрес, фотография и другие персональные данные. Основной метод будет выбран directory spike между `user.search + user.get` и `humanresources.employee.search + user.get`.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-027 — Постоянное хранение Milestone 2
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Milestone 2 должен заменить in-memory repositories и подготовить безопасное хранение OAuth credentials и истории без live task creation.
+- **Решение:** Использовать таблицы `portal_installations`, `profiles`, `app_sessions`, `oauth_transactions`, `bitrix24_user_credentials`, `launcher_projects`, `launcher_project_audit_events`, `task_submissions` и `task_submission_files`.
+- **Последствия:** Credentials отделены от profiles, access/refresh tokens зашифрованы, encryption key находится вне БД, refresh атомарно заменяет token pair с `token_version`. `task_submission_files` сохраняет только metadata — имя, MIME-тип и размер — без binary и `content_sha256`; реальная загрузка файлов в Bitrix24 относится к следующему integration milestone. `operation_status` ограничен `pending/success/error/unknown`; текущий UI `TaskStatus` не меняется.
+- **Связанные QA-записи:** QA-008, QA-013, QA-014, QA-017.
+- **Заменяет:** —
+
+## DEC-028 — Границы Milestone 2 и integration milestone
+
+- **Дата:** 2026-07-22
+- **Статус:** Active
+- **Контекст:** Identity и directory нужны раньше реального создания задач, а недокументированные task-сценарии требуют отдельного этапа.
+- **Решение:** Milestone 2 включает документацию, четыре spikes, portal foundation, profiles/roles, sessions, encrypted credentials, directory clients, launcher projects, authorization/RPC, persistent submissions, production guards, Vercel readiness и QA.
+- **Последствия:** В Milestone 2 остаются spikes OAuth PWA, portal identity, directory сущностей и directory active employee. `tasks.task.add`, реальная загрузка файлов в Bitrix24, TAGS, Scrum backlog, live status, `OnTaskUpdate`, polling и доставка Bitrix24 offline events переносятся в следующий интеграционный milestone. PWA offline mode и офлайн-создание задач не входят в Milestone 2 и не следуют из механизма Bitrix24 offline event delivery. Supabase Custom OAuth spike исключен.
+- **Связанные QA-записи:** —
+- **Заменяет:** DEC-014.
