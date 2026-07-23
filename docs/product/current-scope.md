@@ -45,7 +45,7 @@
 
 UI не обращается к Bitrix24 напрямую. Используются три server-only контракта:
 
-- `Bitrix24IdentityClient` — OAuth URL, code exchange, refresh token pair, current user, `member_id`, domain, `ACTIVE` и `USER_TYPE`;
+- `Bitrix24IdentityClient` — OAuth URL, code exchange, refresh token pair, фактические права приложения, current user, `member_id`, domain, `ACTIVE` и `USER_TYPE`;
 - `Bitrix24DirectoryClient` — server-side поиск и пагинация group/project/scrum и active employee, исключение collab и extranet-enabled сущностей, проверка доступности и `create_tasks`;
 - `Bitrix24TaskClient` — контракт будущего создания задач.
 
