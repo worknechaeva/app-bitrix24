@@ -82,6 +82,8 @@ Installation callback не использует эти tokens как вход п
 
 Browser получает только `success/error`, совпадение member ID, canonical portal origin, admission status, `refreshVerified: true` при полном успехе и безопасный reason code. Scopes, permissions, expiry, access token, refresh token, authorization code, client secret, Bitrix user ID, provider payload и stack trace в response не выводятся. Отдельные sanitized server events могут содержать этап, наличие и тип поля, количество, безопасные нормализованные имена, token scope или permission hypothesis и `hypothesisMatched`, но не credentials, identity или endpoint metadata.
 
+Контролируемые ошибки callback request, state, portal identity, OAuth metadata и hypotheses возвращают HTTP 400. Этот единый статус выбран потому, что callback не может быть принят как согласованный OAuth request; отдельная семантика HTTP 422 harness не требуется. Admission rejection остается HTTP 403, provider и token exchange failures — HTTP 502, неожиданные внутренние ошибки — HTTP 500.
+
 ## Результаты live campaign
 
 Завершенная непроизводственная campaign подтвердила:
@@ -97,7 +99,7 @@ Browser получает только `success/error`, совпадение memb
 ## Known follow-ups
 
 1. Callback query parameters исключены из development access logs до следующей live OAuth campaign.
-2. Незавершенный follow-up: отдельно заменить HTTP 502 для безопасных OAuth validation errors на 400 или 422.
-3. Завершение suppression не означает готовность production OAuth; оставшийся follow-up не блокирует merge PR #4.
+2. Follow-up завершен: безопасные OAuth callback validation errors возвращают HTTP 400, а настоящие upstream failures сохраняют HTTP 502.
+3. Завершение suppression и validation-status follow-up не означает готовность production OAuth.
 
 Live OAuth campaign не запускается автоматически после настройки environment. Для нее требуется отдельное подтверждение.

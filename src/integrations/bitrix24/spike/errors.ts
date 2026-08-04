@@ -3,6 +3,7 @@ import "server-only";
 export type OAuthSpikeReasonCode =
   | "spike_disabled"
   | "invalid_configuration"
+  | "internal_error"
   | "oauth_denied"
   | "missing_code_or_state"
   | "invalid_state"
@@ -32,5 +33,5 @@ export class OAuthSpikeError extends Error {
 
 export function getSafeOAuthSpikeReason(error: unknown): OAuthSpikeReasonCode {
   if (error instanceof OAuthSpikeError) return error.reasonCode;
-  return "provider_unavailable";
+  return "internal_error";
 }

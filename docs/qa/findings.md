@@ -321,3 +321,19 @@ QA-018 закрыта regression-тестами и связана с комми�
 ## Итог preventive security coverage
 
 QA-019 закрыта прямым integration-тестом обеих административных server actions. Открытых QA-наблюдений нет.
+
+## QA-020 — OAuth callback validation errors возвращают HTTP 502
+
+- **Дата обнаружения:** 2026-08-05
+- **Источник:** OAuth spike follow-up
+- **Устройство или браузер:** integration test route handler
+- **Экран:** `GET /api/bitrix24/oauth/callback`
+- **Описание:** контролируемые ошибки portal identity, OAuth metadata и permission hypotheses попадали в общий HTTP 502 вместе с настоящими upstream failures.
+- **Шаги воспроизведения:** вызвать callback с валидным state и синтетическим controlled validation outcome после code exchange.
+- **Фактический результат:** безопасный reason code возвращался с HTTP 502.
+- **Ожидаемый результат:** controlled validation возвращает HTTP 400, provider/token exchange failures остаются HTTP 502, а неожиданные внутренние ошибки возвращают HTTP 500.
+- **Приоритет:** High
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-029.
+- **Связанный тест:** `tests/integration/oauth-spike-routes.test.ts` — callback validation, upstream failure, internal error и success scenarios.
+- **Коммит исправления:** —
