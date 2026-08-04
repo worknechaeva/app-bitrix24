@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
   allowedDevOrigins: ["127.0.0.1"],
+  logging: {
+    incomingRequests: {
+      ignore: [/^\/api\/bitrix24\/oauth\/callback(?:\?.*)?$/],
+    },
+  },
   async headers() {
     return [
       {
