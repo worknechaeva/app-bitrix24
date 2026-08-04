@@ -26,10 +26,13 @@ Roadmap фиксирует границы этапов, а не календар
 
 ### 2. Четыре technical spikes
 
-Spikes запускаются только после отдельного подтверждения и на непроизводственных данных:
+Завершены на непроизводственных данных:
 
-1. OAuth отдельного PWA через локальное приложение Bitrix24.
+1. OAuth отдельного PWA через локальное API-only приложение Bitrix24.
 2. Проверка `member_id`, portal identity и безопасного обновления domain.
+
+Остаются будущими и запускаются только после отдельного подтверждения:
+
 3. Directory group/project/scrum, исключение collab и extranet-enabled сущностей, проверка `create_tasks`.
 4. Directory active employee, сравнение методов поиска и минимальных scopes.
 
@@ -37,7 +40,7 @@ Supabase Custom OAuth spike не входит в Milestone 2.
 
 Migration каждого подсистемного этапа создается только после утверждения результата соответствующего blocking spike:
 
-- OAuth PWA и portal identity spikes блокируют portal, profiles, sessions и credentials foundation;
+- завершенные OAuth PWA и portal identity spikes больше не блокируют portal, profiles, sessions и credentials foundation;
 - directory entity spike блокирует реализацию group/project/scrum directory;
 - directory employee spike блокирует реализацию employee directory;
 - после успешных OAuth PWA и portal identity spikes directory spikes не блокируют начало portal, profiles, sessions и credentials foundation.

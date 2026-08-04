@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone. Описание Milestone 2 ниже является границей будущей реализации, а не утверждением, что OAuth, Supabase или live directory уже подключены.
+Текущий код реализует завершенный development-only mock первого milestone и development/test harness завершенного OAuth и portal identity spike. Описание Milestone 2 ниже является границей будущей production-реализации, а не утверждением, что production OAuth, Supabase или live directory уже подключены.
 
 ## Приложение
 
