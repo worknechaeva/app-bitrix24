@@ -245,7 +245,7 @@ describe("OAuth spike route handlers", () => {
       runtime,
     );
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       status: "error",
       reasonCode: "portal_mismatch",
@@ -299,6 +299,31 @@ describe("OAuth spike route handlers", () => {
 
     await expect(invalid.json()).resolves.toMatchObject({ reasonCode: "invalid_state" });
     await expect(expired.json()).resolves.toMatchObject({ reasonCode: "expired_state" });
+    expect([invalid.status, expired.status]).toEqual([400, 400]);
+    expect(client.exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
+  });
+
+  it("returns a sanitized 500 when state consumption fails unexpectedly", async () => {
+    const { runtime, client } = makeRuntime();
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const code = "browser-must-not-see-state-error-code";
+    vi.spyOn(runtime.stateStore, "consume").mockImplementation(() => {
+      throw new Error("internal state-store stack");
+    });
+
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=${code}`),
+      runtime,
+    );
+    const responseText = await response.text();
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(responseText)).toEqual({ status: "error", reasonCode: "internal_error" });
+    expect(responseText).not.toContain("internal state-store stack");
+    expect(responseText).not.toContain(state);
+    expect(responseText).not.toContain(code);
     expect(client.exchangeAuthorizationCode).not.toHaveBeenCalled();
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
@@ -327,9 +352,9 @@ describe("OAuth spike route handlers", () => {
     }
   });
 
-  it("sanitizes provider failures", async () => {
+  it("keeps sanitized upstream provider failures on 502", async () => {
     const client = new FakeIdentityClient();
-    client.exchangeError = new Error("provider payload with access-token and secret-code");
+    client.exchangeError = new OAuthSpikeError("provider_unavailable");
     const { runtime, logEntries } = makeRuntime(client);
     if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
     const state = runtime.stateStore.issue();
@@ -344,7 +369,27 @@ describe("OAuth spike route handlers", () => {
       status: "error",
       reasonCode: "provider_unavailable",
     });
-    expect(responseText + logs).not.toContain("provider payload");
+    expect(response.status).toBe(502);
+    expect(responseText + logs).not.toContain("secret-code");
+    expect(client.refreshTokenPair).not.toHaveBeenCalled();
+  });
+
+  it("keeps unexpected internal callback errors on a sanitized 500", async () => {
+    const client = new FakeIdentityClient();
+    client.exchangeError = new Error("internal stack with secret-code");
+    const { runtime, logEntries } = makeRuntime(client);
+    if (runtime.status !== "enabled") throw new Error("Expected enabled runtime");
+    const state = runtime.stateStore.issue();
+    const response = await handleOAuthSpikeCallback(
+      new Request(`https://harness.example/api/bitrix24/oauth/callback?state=${state}&code=secret-code`),
+      runtime,
+    );
+    const responseText = await response.text();
+    const logs = JSON.stringify(logEntries);
+
+    expect(response.status).toBe(500);
+    expect(JSON.parse(responseText)).toEqual({ status: "error", reasonCode: "internal_error" });
+    expect(responseText + logs).not.toContain("internal stack");
     expect(responseText + logs).not.toContain("secret-code");
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
   });
@@ -360,7 +405,7 @@ describe("OAuth spike route handlers", () => {
       runtime,
     );
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       status: "error",
       reasonCode: "provider_identity_mismatch",
@@ -386,6 +431,7 @@ describe("OAuth spike route handlers", () => {
     );
 
     await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
+    expect(response.status).toBe(400);
     expect(client.refreshTokenPair).toHaveBeenCalledOnce();
     expect(client.getApplicationPermissions).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
@@ -407,6 +453,7 @@ describe("OAuth spike route handlers", () => {
     );
 
     await expect(response.json()).resolves.toEqual({ status: "error", reasonCode });
+    expect(response.status).toBe(400);
     expect(client.refreshTokenPair).not.toHaveBeenCalled();
     expect(client.getCurrentUser).not.toHaveBeenCalled();
   });
@@ -447,7 +494,7 @@ describe("OAuth spike route handlers", () => {
     const response = await handleOAuthSpikeCallback(new Request(callbackUrl), runtime);
     const diagnostics = logEntries.filter((entry) => entry.event === "bitrix24_oauth_spike_scope_diagnostic");
 
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       status: "error",
       reasonCode: "scope_hypothesis_mismatch",
@@ -578,7 +625,7 @@ describe("OAuth spike route handlers", () => {
       runtime,
     );
 
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       status: "error",
       reasonCode: "permission_hypothesis_mismatch",
@@ -857,5 +904,6 @@ describe("OAuth spike route handlers", () => {
       status: "error",
       reasonCode: "token_exchange_failed",
     });
+    expect(response.status).toBe(502);
   });
 });

@@ -49,6 +49,28 @@ function safeError(reasonCode: OAuthSpikeReasonCode, status = 400): Response {
   return safeJson({ status: "error", reasonCode }, status);
 }
 
+function safeCallbackError(error: unknown): Response {
+  if (!(error instanceof OAuthSpikeError)) return safeError("internal_error", 500);
+
+  switch (error.reasonCode) {
+    case "provider_unavailable":
+    case "token_exchange_failed":
+      return safeError(error.reasonCode, 502);
+    case "inactive_user":
+    case "external_user":
+    case "unknown_user_type":
+      return safeError(error.reasonCode, 403);
+    case "invalid_configuration":
+    case "internal_error":
+    case "spike_disabled":
+    case "state_generation_failed":
+    case "invalid_install_payload":
+      return safeError(error.reasonCode, 500);
+    default:
+      return safeError(error.reasonCode);
+  }
+}
+
 function readSingleQueryParameter(url: URL, key: string): string | undefined {
   const values = url.searchParams.getAll(key);
   return values.length === 1 && values[0] !== "" ? values[0] : undefined;
@@ -92,7 +114,8 @@ export async function handleOAuthSpikeCallback(
   try {
     runtime.stateStore.consume(state);
   } catch (error) {
-    return safeError(getSafeOAuthSpikeReason(error));
+    const reasonCode = getSafeOAuthSpikeReason(error);
+    return safeError(reasonCode, reasonCode === "internal_error" ? 500 : 400);
   }
 
   if (callbackUrl.searchParams.has("error")) return safeError("oauth_denied");
@@ -174,19 +197,12 @@ export async function handleOAuthSpikeCallback(
       refreshVerified: true,
     });
   } catch (error) {
-    const reasonCode = getSafeOAuthSpikeReason(error);
+    const reasonCode = error instanceof OAuthSpikeError ? error.reasonCode : "internal_error";
     runtime.logger.info("bitrix24_oauth_spike_callback", {
       status: "error",
       reasonCode,
     });
-    return safeError(
-      reasonCode,
-      reasonCode === "portal_mismatch" ||
-        reasonCode === "portal_origin_mismatch" ||
-        reasonCode === "provider_identity_mismatch"
-        ? 403
-        : 502,
-    );
+    return safeCallbackError(error);
   }
 }
 

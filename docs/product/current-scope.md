@@ -176,6 +176,8 @@ Credentials хранятся отдельно от profiles. Сырой session 
 
 Завершенный development/test spike подтвердил OAuth отдельного PWA, проверку `member_id` и portal identity, token scope `app`, фактическое application permission `user_brief` через REST-метод `scope`, active employee admission, refresh token rotation и неизменность provider identity после refresh. Это не является production authentication и не создает persistent credentials, sessions, profiles или storage.
 
+В spike callback контролируемые ошибки проверки request, state, portal identity и OAuth metadata возвращают безопасный HTTP 400; admission rejection остается HTTP 403. Ошибки Bitrix24 provider и token exchange сохраняют HTTP 502, а неожиданные внутренние ошибки — HTTP 500. Response содержит только безопасный reason code и не меняет границы production OAuth.
+
 Будущими остаются два directory spike, которые выполняются только после отдельного подтверждения:
 
 1. Directory group/project/scrum, collab, extranet-enabled сущностей и `create_tasks`.
