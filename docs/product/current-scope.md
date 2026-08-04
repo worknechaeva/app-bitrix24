@@ -174,12 +174,12 @@ Credentials хранятся отдельно от profiles. Сырой session 
 
 ## Technical spikes Milestone 2
 
-До соответствующей реализации и только после отдельного подтверждения выполняются четыре spike:
+Завершенный development/test spike подтвердил OAuth отдельного PWA, проверку `member_id` и portal identity, token scope `app`, фактическое application permission `user_brief` через REST-метод `scope`, active employee admission, refresh token rotation и неизменность provider identity после refresh. Это не является production authentication и не создает persistent credentials, sessions, profiles или storage.
 
-1. OAuth отдельного PWA.
-2. Проверка `member_id` и portal identity.
-3. Directory group/project/scrum, collab, extranet-enabled сущностей и `create_tasks`.
-4. Directory active employee и минимальных scopes.
+Будущими остаются два directory spike, которые выполняются только после отдельного подтверждения:
+
+1. Directory group/project/scrum, collab, extranet-enabled сущностей и `create_tasks`.
+2. Directory active employee и минимальных scopes.
 
 Supabase Custom OAuth spike не входит в Milestone 2.
 

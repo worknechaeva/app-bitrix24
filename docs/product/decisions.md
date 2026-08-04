@@ -281,3 +281,13 @@
 - **Последствия:** В Milestone 2 остаются spikes OAuth PWA, portal identity, directory сущностей и directory active employee. `tasks.task.add`, реальная загрузка файлов в Bitrix24, TAGS, Scrum backlog, live status, `OnTaskUpdate`, polling и доставка Bitrix24 offline events переносятся в следующий интеграционный milestone. PWA offline mode и офлайн-создание задач не входят в Milestone 2 и не следуют из механизма Bitrix24 offline event delivery. Supabase Custom OAuth spike исключен.
 - **Связанные QA-записи:** —
 - **Заменяет:** DEC-014.
+
+## DEC-029 — Результат development/test OAuth и portal identity spike
+
+- **Дата:** 2026-08-04
+- **Статус:** Active
+- **Контекст:** Завершенный непроизводственный spike устранил неопределенность OAuth отдельного PWA, portal identity и admission, но production authentication и persistent storage еще не реализованы.
+- **Решение:** Для development/test подтверждены локальное API-only приложение, installation callback с portal metadata без сохранения installer credentials, code exchange, OAuth token scope `app`, отдельная проверка application permission методом `scope`, достаточность `user_brief` для active employee admission, проверки `member_id` и portal origin, refresh token rotation, неизменность provider identity после refresh, `user.current` и fail-closed admission.
+- **Последствия:** `app` является OAuth token scope, а `user_brief` — application permission и не ожидается в token response. Результат не означает готовность production OAuth flow, persistent или encrypted credentials storage, opaque app sessions, profiles/roles, Supabase gateway, migrations, production deployment или live task creation; production task client остается disabled и fail closed. Отдельными будущими задачами остаются исключение callback query parameters из development access logs до следующей live OAuth campaign и замена HTTP 502 для безопасных OAuth validation errors на 400 или 422.
+- **Связанные QA-записи:** —
+- **Заменяет:** —

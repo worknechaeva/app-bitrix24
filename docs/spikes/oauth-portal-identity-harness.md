@@ -1,8 +1,9 @@
 # OAuth и portal identity: локальный spike harness
 
-Этот временный harness подготавливает будущую test campaign Bitrix24 OAuth для отдельного PWA. Он доступен только в development/test, не подключен к production application flow и не означает, что OAuth PWA или portal identity spikes завершены.
+Этот временный harness использовался для завершенного development/test spike Bitrix24 OAuth и portal identity отдельного PWA. Он доступен только в development/test, не подключен к production application flow и не означает, что production OAuth, profiles, app sessions или persistent credentials реализованы.
 
-Live campaign выполняется только после отдельного подтверждения пользователя и предоставления непроизводственного портала, local application, синтетических пользователей и временного HTTPS origin. До этого момента реальные Bitrix24-вызовы запрещены.
+Следующая live campaign выполняется только после отдельного подтверждения пользователя и предоставления непроизводственного портала, local application, синтетических пользователей и временного HTTPS origin.
+До следующей live OAuth campaign необходимо отдельной задачей исключить callback query parameters из development access logs.
 
 ## Границы
 
@@ -51,12 +52,7 @@ BITRIX24_OAUTH_SPIKE_TOKEN_ENDPOINT=https://oauth.bitrix.info/oauth/token/
 
 `BITRIX24_OAUTH_SPIKE_PERMISSION_HYPOTHESIS` — ожидание фактического права приложения, проверяемого после refresh отдельным REST-методом `scope` с rotated access token. Допустимы только `user_brief` и `user`; отсутствие точного значения завершается безопасным `permission_hypothesis_mismatch`. Пустое значение, несколько значений в настройке, `user_basic`, `basic`, `task`, `tasks`, `crm`, webhook и неизвестные значения отклоняются. Token endpoint фиксирован на `https://oauth.bitrix.info/oauth/token/`. Redirect URI обязан принадлежать configured app origin и указывать на callback route.
 
-`user_brief` — первая проверяемая гипотеза, а не подтвержденный достаточный production scope. План live campaign:
-
-1. В настройках local application выбрать право `user_brief`, установить permission hypothesis `user_brief` и проверить admission при token scope hypothesis `app`.
-2. Если Bitrix24 не возвращает `USER_TYPE`, зафиксировать это как результат spike; пользователь не считается employee, admission остается закрытым.
-3. В настройках local application заменить право на `user`, изменить permission hypothesis на `user` и повторить campaign.
-4. Определить окончательный минимальный production scope только после этой campaign и отдельного employee-directory spike.
+Завершенный spike подтвердил `user_brief` как достаточное application permission для active employee admission при OAuth token scope `app`. `user_brief` проверяется только REST-методом `scope` и не ожидается в token response. Окончательный минимальный набор разрешений для employee directory остается предметом отдельного directory spike.
 
 `user_basic` сейчас не используется: он раскрывает дополнительные контактные данные, но не подтвержден как источник `USER_TYPE` и не дает обоснованной пользы текущему admission spike.
 

@@ -1,6 +1,6 @@
 # Task Launcher
 
-Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Первый implementation slice Milestone 2 разделяет server-only контракты интеграции и гарантирует production fail-closed для создания задач; Bitrix24 OAuth, Supabase Postgres foundation, live-справочники, постоянное хранение и technical spikes еще не начинались.
+Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Первый implementation slice Milestone 2 разделяет server-only контракты интеграции и гарантирует production fail-closed для создания задач. Development/test spike OAuth и portal identity завершен; production OAuth, Supabase Postgres foundation, live-справочники и постоянное хранение еще не реализованы.
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
@@ -109,4 +109,4 @@ Mock-вход и mock-интеграция доступны только в deve
 
 ## Что пока не подключено
 
-Bitrix24 OAuth, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
+Production OAuth flow, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. Завершенный development/test spike подтвердил OAuth и portal identity, но не добавил их в production application flow. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
