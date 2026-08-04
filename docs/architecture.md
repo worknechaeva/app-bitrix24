@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone и development/test harness завершенного OAuth и portal identity spike. Описание Milestone 2 ниже является границей будущей production-реализации, а не утверждением, что production OAuth, Supabase или live directory уже подключены.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike и локальную server-only конфигурацию identity единственного портала. Описание остальной части Milestone 2 ниже является границей будущей production-реализации, а не утверждением, что production OAuth, `portal_installations`, Supabase или live directory уже подключены.
 
 ## Приложение
 
@@ -33,6 +33,7 @@ UI
 
 - Task Launcher самостоятельно выполняет Bitrix24 OAuth; Supabase Auth не используется.
 - Пользователь не выбирает портал. Server-side configuration содержит ожидаемый `member_id` и bootstrap origin.
+- Ожидаемый `member_id` и canonical portal origin задаются только вместе. До подключения persistent portal installation обе переменные могут отсутствовать; partial или небезопасная конфигурация завершается fail closed.
 - Callback считает входные `code`, `domain`, `member_id` и остальные параметры недоверенными до успешного code exchange и проверки identity.
 - Другой `member_id` отклоняется до создания profile, app session и credentials и не сохраняется как вторая installation. Canonical domain может обновляться только после доверенной OAuth-проверки с прежним `member_id`.
 - Переключение на другой портал требует отдельного deployment и отдельной database/project configuration. Конкретная SQL-реализация singleton constraint выбирается позднее на этапе schema/migrations.

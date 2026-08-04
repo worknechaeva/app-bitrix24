@@ -101,12 +101,16 @@ tests/
 ```dotenv
 APP_RUNTIME_MODE=mock
 BITRIX24_MODE=mock
+BITRIX24_PORTAL_MEMBER_ID=
+BITRIX24_PORTAL_ORIGIN=
 ```
 
 Не добавляйте OAuth tokens, client secret, encryption key или service-role credentials в Git, browser-visible переменные, fixtures и логи. Переменные будущей live-интеграции не должны иметь префикс `NEXT_PUBLIC_`.
+
+`BITRIX24_PORTAL_MEMBER_ID` и `BITRIX24_PORTAL_ORIGIN` задают server-only identity единственного портала deployment. До подключения portal installation обе переменные могут быть пустыми; частичная или небезопасная конфигурация отклоняется.
 
 Mock-вход и mock-интеграция доступны только в development. Production-сборка показывает закрытый экран входа и не выполняет mock-мутации.
 
 ## Что пока не подключено
 
-Production OAuth flow, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. Завершенный development/test spike подтвердил OAuth и portal identity, но не добавил их в production application flow. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
+Production OAuth flow, `portal_installations`, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. Реализована только server-only конфигурация identity единственного портала. Завершенный development/test spike подтвердил OAuth и portal identity, но не добавил их в production application flow. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
