@@ -301,3 +301,13 @@
 - **Последствия:** `updated_at` меняется только при фактическом изменении origin; singleton invariant и гонки защищены PostgreSQL, а не предварительным application-level `SELECT`. Slice пока не подключен к production OAuth callback, не применен к удаленной schema и не означает готовую production OAuth persistence.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-031 — Persistent profiles reconciliation
+
+- **Дата:** 2026-08-05
+- **Статус:** Active
+- **Контекст:** После доверенной проверки portal identity и active employee admission локальная identity должна создаваться конкурентно-безопасно, не позволяя повторному OAuth-входу изменить локальные полномочия или реактивировать заблокированный profile.
+- **Решение:** `profiles` использует внутренний UUID, внешний unique key `portal_installation_id + bitrix_user_id`, text role с `CHECK` для `editor/administrator`, `is_active` и минимальные snapshots `bitrix_active/bitrix_user_type`. Одна `SECURITY INVOKER` PostgreSQL RPC принимает только уже проверенный active employee, атомарно создает `editor`, обновляет только snapshots и verification timestamp и возвращает отдельный результат `inactive` без изменения role или `is_active`.
+- **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Bootstrap administrator, role management, last-admin guard, административная блокировка, sessions, credentials и production OAuth callback integration остаются будущими; удаленная Supabase schema не изменялась.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
