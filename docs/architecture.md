@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations` slice с migration, атомарной RPC и server-only adapter. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth пока не использует repository, удаленная Supabase schema не изменена, а live directory не подключен.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth пока не использует repositories, удаленная Supabase schema не изменена, а live directory не подключен.
 
 ## Приложение
 
@@ -58,6 +58,8 @@ UI
 - Profile имеет внутренний UUID и уникальность `portal_installation_id + bitrix_user_id`.
 - Обязательной связи с `auth.users` нет.
 - Первый допустимый вход создает `editor`; локальная роль не наследуется из OAuth или Bitrix24.
+- Реализованная атомарная reconciliation RPC принимает только уже проверенный `ACTIVE=true`, `USER_TYPE=employee`, создает profile с `is_active=true`, обновляет только snapshots `active/userType` и verification timestamp и не выполняет предварительный application-level `SELECT`.
+- `role` и `is_active` reconciliation не обновляет. Inactive profile возвращается типизированным outcome без автоматической реактивации; полностью совпадающий snapshot сохраняет прежний `updated_at`.
 - Administrator Task Launcher не обязан быть администратором портала и может повысить другого вошедшего active employee.
 - Роль и `is_active` меняются только контролируемыми server-only операциями.
 - При `is_active=false` отзываются все активные app sessions, использование OAuth credentials запрещается и новые Bitrix24 Identity, Directory и Task вызовы от имени profile не выполняются; история submissions и launcher projects сохраняются.
@@ -76,7 +78,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Первый gateway реализован только для `portal_installations`: он создает отдельный `@supabase/supabase-js` client с server-only `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`, отключенной browser session persistence и единственной экспортируемой операцией reconciliation. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблица имеет RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицу и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Privileged gateway реализован для узких reconciliation операций `portal_installations` и `profiles`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Обе таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 ### Server repositories
 

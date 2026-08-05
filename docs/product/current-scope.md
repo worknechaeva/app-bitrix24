@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и первый persistent storage slice для `portal_installations`. Production OAuth callback пока не использует persistent repository; остальная описанная ниже production-интеграция остается целевым scope.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations` и `profiles`. Production OAuth callback пока не использует persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
 
 ## Формат продукта и портал
 
@@ -38,10 +38,14 @@
 - Profile имеет собственный внутренний UUID.
 - Уникальная внешняя идентичность — `portal_installation_id + bitrix_user_id`.
 - Profile не обязан быть связан с `auth.users`.
-- При каждом входе повторно проверяются portal identity, активность и тип пользователя; безопасные snapshot-поля могут обновляться, а локальная роль автоматически не меняется.
+- Persistent profiles foundation реализован локально: первый проверенный active employee создается с ролью `editor` и `is_active=true` через одну атомарную PostgreSQL reconciliation RPC.
+- Repository принимает только уже проверенную server-side identity ожидаемого портала с `ACTIVE=true` и `USER_TYPE=employee`. Сохраняются только Bitrix user ID, snapshots `active` и `userType` и время последней успешной проверки; email, телефоны, адрес, фотография, credentials, permissions и сырой ответ не сохраняются.
+- При повторной reconciliation безопасные snapshot-поля и verification timestamp могут обновляться, но локальные `role` и `is_active` автоматически не меняются. Полностью совпадающий snapshot не изменяет `updated_at`.
+- Inactive profile возвращается как отдельный типизированный результат и автоматически не реактивируется; server use case обязан отклонить создание новой app session и использование credentials.
 - `is_active=false` отзывает все активные app sessions и запрещает использование OAuth credentials.
 - После блокировки новые Bitrix24 Identity, Directory и Task вызовы от имени profile не выполняются; история submissions и launcher projects сохраняются.
 - Использование credentials не разрешается повторно автоматически: нужны новая проверка identity и утвержденный recovery/reactivation flow. Полный recovery flow в Milestone 2 пока не проектируется.
+- Bootstrap первого administrator, управление ролями, административная блокировка и last-admin guard остаются будущими операциями и не входят в реализованный profiles foundation.
 
 ## Интеграционные границы Milestone 2
 
@@ -174,7 +178,7 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
 
-Для реализованного `portal_installations` slice таблица находится в `public`, RLS включена без пользовательских policies, а все права на таблицу и reconciliation RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` вызывает узкую `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migration зафиксированы в репозитории, но migration не применялась к удаленной базе, а repository не подключен к production OAuth callback.
+Для реализованных `portal_installations` и `profiles` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и reconciliation RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth callback.
 
 ## Technical spikes Milestone 2
 

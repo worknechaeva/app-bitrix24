@@ -55,11 +55,12 @@ Migration каждого подсистемного этапа создаетс�
 
 ### 4. Profiles и роли
 
-- profiles без обязательной зависимости от `auth.users`;
-- роли `administrator/editor` внутри Task Launcher;
-- первый administrator через `BOOTSTRAP_ADMIN_BITRIX_USER_ID`;
-- защита последнего активного administrator;
-- блокировка inactive и внешних пользователей.
+- profiles без обязательной зависимости от `auth.users`, UUID и unique portal/user identity — foundation реализован локально;
+- атомарная reconciliation проверенного active employee с ролью нового profile `editor`, безопасными snapshots и сохранением `role`/`is_active` — реализована локально;
+- RLS, grants, pgTAP, database integration и concurrency coverage для profiles — реализованы без подключения к production OAuth callback или удаленной schema;
+- первый administrator через `BOOTSTRAP_ADMIN_BITRIX_USER_ID` — будущая задача;
+- управление ролями, защита последнего active administrator и административная блокировка — будущие задачи;
+- sessions/credentials enforcement для inactive profile и recovery/reactivation flow — будущие задачи.
 
 ### 5. Sessions и encrypted credentials
 
@@ -91,8 +92,8 @@ Migration каждого подсистемного этапа создаетс�
 
 - app session и server-only DAL как источник actor identity;
 - actor-aware repositories;
-- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, остальные таблицы остаются будущими;
-- service-role только в privileged database gateway; первый узкий gateway реализован для `portal_installations`;
+- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations` и `profiles`, остальные таблицы остаются будущими;
+- service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations` и `profiles`;
 - транзакционные RPC для ролей, sessions, archive/restore и token rotation;
 - adversarial regression-тесты доступа.
 

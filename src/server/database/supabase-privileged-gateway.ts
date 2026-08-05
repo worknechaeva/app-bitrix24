@@ -17,15 +17,35 @@ export type PortalInstallationRpcTransport = (
   arguments_: PortalInstallationRpcArguments,
 ) => Promise<PortalInstallationRpcResponse>;
 
-export const reconcilePortalInstallationRpc: PortalInstallationRpcTransport = async (arguments_) => {
+export type ProfileRpcArguments = {
+  p_portal_installation_id: number;
+  p_bitrix_user_id: string;
+  p_bitrix_active: boolean;
+  p_bitrix_user_type: string;
+};
+
+export type ProfileRpcResponse = {
+  data: unknown;
+  error: unknown;
+};
+
+export type ProfileRpcTransport = (arguments_: ProfileRpcArguments) => Promise<ProfileRpcResponse>;
+
+function createPrivilegedClient() {
   const configuration = getSupabasePrivilegedConfiguration();
-  const client = createClient(configuration.url, configuration.serviceRoleKey, {
+  return createClient(configuration.url, configuration.serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
   });
+}
 
-  return client.rpc("reconcile_portal_installation", arguments_);
+export const reconcilePortalInstallationRpc: PortalInstallationRpcTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("reconcile_portal_installation", arguments_);
+};
+
+export const reconcileProfileRpc: ProfileRpcTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("reconcile_profile", arguments_);
 };

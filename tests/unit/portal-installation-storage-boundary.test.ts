@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const gatewayPath = resolve("src/server/database/supabase-privileged-gateway.ts");
 const adapterPath = resolve("src/server/portal/supabase-portal-installation-repository.ts");
+const profileAdapterPath = resolve("src/server/profile/supabase-profile-repository.ts");
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -16,11 +17,14 @@ describe("portal installation storage boundary", () => {
   it("keeps the Supabase client and adapter behind explicit server-only modules", () => {
     const gateway = readFileSync(gatewayPath, "utf8");
     const adapter = readFileSync(adapterPath, "utf8");
+    const profileAdapter = readFileSync(profileAdapterPath, "utf8");
 
     expect(gateway.startsWith('import "server-only";')).toBe(true);
     expect(adapter.startsWith('import "server-only";')).toBe(true);
+    expect(profileAdapter.startsWith('import "server-only";')).toBe(true);
     expect(gateway).toContain('from "@supabase/supabase-js"');
     expect(adapter).not.toContain('from "@supabase/supabase-js"');
+    expect(profileAdapter).not.toContain('from "@supabase/supabase-js"');
     expect(gateway).not.toMatch(/export\s+(?:const|let|var)\s+\w*client/i);
   });
 
@@ -33,5 +37,6 @@ describe("portal installation storage boundary", () => {
     expect(browserFacingSources).not.toContain("@supabase/supabase-js");
     expect(browserFacingSources).not.toContain("supabase-privileged-gateway");
     expect(browserFacingSources).not.toContain("supabase-portal-installation-repository");
+    expect(browserFacingSources).not.toContain("supabase-profile-repository");
   });
 });
