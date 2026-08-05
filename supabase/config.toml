@@ -1,0 +1,42 @@
+project_id = "task-launcher"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 100
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+[auth]
+# Local GoTrue only supplies standard anon/service_role API keys for database tests.
+# The Task Launcher application does not use Supabase Auth.
+enabled = true
+enable_signup = false
+enable_anonymous_sign_ins = false
+
+[storage]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false
