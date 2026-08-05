@@ -48,6 +48,7 @@ Migration каждого подсистемного этапа создаетс�
 ### 3. Portal foundation
 
 - server-only конфигурация одного portal `member_id` и canonical origin на deployment — реализована локально;
+- storage-independent контракт и политика reconciliation одной portal installation — реализованы локально без SQL schema;
 - `portal_installations`;
 - проверка OAuth callback, state, domain и portal mismatch;
 - запрет выбора портала пользователем.
