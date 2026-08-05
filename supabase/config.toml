@@ -26,7 +26,11 @@ enabled = false
 enabled = false
 
 [auth]
-enabled = false
+# Local GoTrue only supplies standard anon/service_role API keys for database tests.
+# The Task Launcher application does not use Supabase Auth.
+enabled = true
+enable_signup = false
+enable_anonymous_sign_ins = false
 
 [storage]
 enabled = false

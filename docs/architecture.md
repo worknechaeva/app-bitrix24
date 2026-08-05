@@ -76,7 +76,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Первый gateway реализован только для `portal_installations`: он создает отдельный `@supabase/supabase-js` client с server-only `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`, отключенной browser session persistence и единственной экспортируемой операцией reconciliation. Таблица имеет RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицу и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Первый gateway реализован только для `portal_installations`: он создает отдельный `@supabase/supabase-js` client с server-only `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`, отключенной browser session persistence и единственной экспортируемой операцией reconciliation. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблица имеет RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицу и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 ### Server repositories
 
