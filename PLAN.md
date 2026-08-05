@@ -1,6 +1,6 @@
 # Task Launcher — план Milestone 2
 
-**Статус:** архитектура Milestone 2 утверждена. Реализованы server-only границы `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`, development/test mock и production fail-closed для создания задач, а также локальная server-only конфигурация identity единственного портала. Development/test spikes OAuth отдельного PWA и portal identity завершены; локальное test Bitrix24 API-only приложение использовалось только как непроизводственный spike resource, production authentication, `portal_installations` и Bitrix24 application/resources не реализованы, Supabase и Vercel resources не созданы, persistent storage и миграции не реализованы.
+**Статус:** архитектура Milestone 2 утверждена. Реализованы server-only границы `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`, development/test mock и production fail-closed для создания задач, локальная server-only конфигурация identity единственного портала, а также storage-independent контракт reconciliation будущей portal installation. Development/test spikes OAuth отдельного PWA и portal identity завершены; локальное test Bitrix24 API-only приложение использовалось только как непроизводственный spike resource, production authentication, таблица `portal_installations` и Bitrix24 application/resources не реализованы, Supabase и Vercel resources не созданы, persistent storage и миграции не реализованы.
 
 Канонический scope находится в [docs/product/current-scope.md](./docs/product/current-scope.md), решения — в [docs/product/decisions.md](./docs/product/decisions.md), архитектурные границы — в [docs/architecture.md](./docs/architecture.md), полный порядок этапов — в [docs/roadmap.md](./docs/roadmap.md). Завершенный mock и QA-001–QA-019 сохраняются как результат Milestone 1 в [docs/qa/findings.md](./docs/qa/findings.md).
 
@@ -57,7 +57,7 @@ Migration каждого подсистемного этапа создаетс�
 
 1. **Documentation synchronization** — синхронизировать существующие документы без кода и ресурсов.
 2. **Оставшиеся directory spikes** — отдельно проверить group/project/scrum directory и employee directory и остановиться после каждого результата для review.
-3. **Portal foundation** — server-only конфигурация identity одного портала реализована локально; `portal_installations` и ее migration остаются следующим отдельным storage slice.
+3. **Portal foundation** — server-only конфигурация identity одного портала и storage-independent reconciliation contract реализованы локально; database adapter, таблица `portal_installations` и ее migration остаются следующим отдельным storage slice.
 4. **Profiles и роли** — после того же spike добавить editor по умолчанию, bootstrap первого administrator и last-admin guard.
 5. **Sessions и credentials** — после того же spike добавить `app_sessions`, `oauth_transactions`, encryption и token rotation; directory spikes для начала этого этапа не требуются.
 6. **Directory clients** — после утверждения directory entity spike реализовать group/project/scrum directory, а после directory employee spike — employee directory и завершить live Identity/Directory.

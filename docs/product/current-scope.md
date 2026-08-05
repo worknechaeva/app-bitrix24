@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed и локальная server-only конфигурация identity единственного портала. `portal_installations` и остальная описанная ниже production-интеграция остаются целевым scope и еще не реализованы.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и storage-independent контракт reconciliation будущей portal installation. Таблица `portal_installations`, ее database adapter и остальная описанная ниже production-интеграция остаются целевым scope и еще не реализованы.
 
 ## Формат продукта и портал
 
@@ -12,6 +12,7 @@
 - Несколько порталов внутри одного deployment не поддерживаются.
 - OAuth callback с другим `member_id` отклоняется до создания profile, app session и credentials; другой `member_id` не сохраняется как вторая installation.
 - Canonical domain может обновляться только после доверенной OAuth-проверки при прежнем `member_id`.
+- Server-only portal installation repository принимает только уже проверенную OAuth identity и обязан атомарно создать singleton installation, оставить совпадающую identity без изменений или обновить только canonical origin при прежнем `member_id`; другой `member_id` отклоняется.
 - Переключение на другой портал требует отдельного deployment и отдельной database/project configuration. Конкретная SQL-реализация singleton constraint определяется позднее на этапе schema/migrations.
 - Server-only переменные `BITRIX24_PORTAL_MEMBER_ID` и `BITRIX24_PORTAL_ORIGIN` принимаются только вместе; partial configuration, невалидный `member_id` и небезопасный origin отклоняются. Пустая пара означает, что persistent portal foundation еще не настроен.
 
