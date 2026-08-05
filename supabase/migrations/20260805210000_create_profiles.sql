@@ -36,6 +36,7 @@ create table public.profiles (
 alter table public.profiles enable row level security;
 
 revoke all on table public.profiles from public, anon, authenticated;
+revoke all on table public.profiles from service_role;
 grant select, insert, update on table public.profiles to service_role;
 
 create function public.reconcile_profile(

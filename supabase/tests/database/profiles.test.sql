@@ -110,7 +110,7 @@ select ok(
   'role is limited to editor and administrator'
 );
 
-select col_default_is('public', 'profiles', 'role', '''editor''::text', 'new profiles default to editor');
+select col_default_is('public', 'profiles', 'role', 'editor', 'new profiles default to editor');
 select col_default_is('public', 'profiles', 'is_active', 'true', 'new profiles default to active');
 select ok(
   not exists (
