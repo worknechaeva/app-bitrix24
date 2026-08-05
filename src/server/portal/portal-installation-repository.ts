@@ -32,7 +32,9 @@ export class PortalInstallationIdentityError extends Error {
   }
 }
 
-function normalizeIdentity(identity: PortalInstallationIdentity): PortalInstallationIdentity {
+export function validatePortalInstallationIdentity(
+  identity: PortalInstallationIdentity,
+): PortalInstallationIdentity {
   if (!memberIdPattern.test(identity.memberId)) {
     throw new PortalInstallationIdentityError("invalid_portal_identity");
   }
@@ -55,13 +57,13 @@ export function reconcilePortalInstallationIdentity(
   current: PortalInstallationIdentity | null,
   trusted: PortalInstallationIdentity,
 ): PortalInstallationReconciliation {
-  const trustedIdentity = normalizeIdentity(trusted);
+  const trustedIdentity = validatePortalInstallationIdentity(trusted);
 
   if (current === null) {
     return { outcome: "created", installation: trustedIdentity };
   }
 
-  const currentIdentity = normalizeIdentity(current);
+  const currentIdentity = validatePortalInstallationIdentity(current);
   if (currentIdentity.memberId !== trustedIdentity.memberId) {
     throw new PortalInstallationIdentityError("portal_installation_mismatch");
   }

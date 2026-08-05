@@ -48,8 +48,8 @@ Migration каждого подсистемного этапа создаетс�
 ### 3. Portal foundation
 
 - server-only конфигурация одного portal `member_id` и canonical origin на deployment — реализована локально;
-- storage-independent контракт и политика reconciliation одной portal installation — реализованы локально без SQL schema;
-- `portal_installations`;
+- storage-independent контракт и политика reconciliation одной portal installation — реализованы;
+- `portal_installations`, singleton migration, атомарная PostgreSQL RPC и server-only Supabase adapter — реализованы локально без подключения к production OAuth callback или удаленной schema;
 - проверка OAuth callback, state, domain и portal mismatch;
 - запрет выбора портала пользователем.
 
@@ -91,8 +91,8 @@ Migration каждого подсистемного этапа создаетс�
 
 - app session и server-only DAL как источник actor identity;
 - actor-aware repositories;
-- RLS и grants закрывают Data API для `anon/authenticated`;
-- service-role только в privileged database gateway;
+- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, остальные таблицы остаются будущими;
+- service-role только в privileged database gateway; первый узкий gateway реализован для `portal_installations`;
 - транзакционные RPC для ролей, sessions, archive/restore и token rotation;
 - adversarial regression-тесты доступа.
 

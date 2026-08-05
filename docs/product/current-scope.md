@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и storage-independent контракт reconciliation будущей portal installation. Таблица `portal_installations`, ее database adapter и остальная описанная ниже production-интеграция остаются целевым scope и еще не реализованы.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и первый persistent storage slice для `portal_installations`. Production OAuth callback пока не использует persistent repository; остальная описанная ниже production-интеграция остается целевым scope.
 
 ## Формат продукта и портал
 
@@ -13,7 +13,7 @@
 - OAuth callback с другим `member_id` отклоняется до создания profile, app session и credentials; другой `member_id` не сохраняется как вторая installation.
 - Canonical domain может обновляться только после доверенной OAuth-проверки при прежнем `member_id`.
 - Server-only portal installation repository принимает только уже проверенную OAuth identity и обязан атомарно создать singleton installation, оставить совпадающую identity без изменений или обновить только canonical origin при прежнем `member_id`; другой `member_id` отклоняется.
-- Переключение на другой портал требует отдельного deployment и отдельной database/project configuration. Конкретная SQL-реализация singleton constraint определяется позднее на этапе schema/migrations.
+- Переключение на другой портал требует отдельного deployment и отдельной database/project configuration. Singleton обеспечивается строкой с фиксированным ключом `1`, защищенным `PRIMARY KEY` и `CHECK`; reconciliation выполняется одной атомарной PostgreSQL RPC.
 - Server-only переменные `BITRIX24_PORTAL_MEMBER_ID` и `BITRIX24_PORTAL_ORIGIN` принимаются только вместе; partial configuration, невалидный `member_id` и небезопасный origin отклоняются. Пустая пара означает, что persistent portal foundation еще не настроен.
 
 ## Вход и роли
@@ -173,6 +173,8 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Service-role обходит RLS и доступен только минимальному privileged database gateway.
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
+
+Для реализованного `portal_installations` slice таблица находится в `public`, RLS включена без пользовательских policies, а все права на таблицу и reconciliation RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` вызывает узкую `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migration зафиксированы в репозитории, но migration не применялась к удаленной базе, а repository не подключен к production OAuth callback.
 
 ## Technical spikes Milestone 2
 

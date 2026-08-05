@@ -24,3 +24,39 @@ jobs:
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:e2e
+
+  portal-installations-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start isolated local Supabase stack
+        run: pnpm exec supabase start --output json > /tmp/task-launcher-supabase-start.json
+      - name: Recreate database from committed migrations
+        run: pnpm exec supabase db reset --local
+      - name: Verify schema, RLS, and grants with pgTAP
+        run: pnpm exec supabase test db --local supabase/tests/database
+      - name: Run repository and concurrency tests against PostgreSQL
+        shell: bash
+        run: |
+          pnpm exec supabase status --output env > /tmp/task-launcher-supabase-status.env
+          set -a
+          source /tmp/task-launcher-supabase-status.env
+          set +a
+          SUPABASE_URL="$API_URL" \
+          SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          SUPABASE_ANON_KEY="$ANON_KEY" \
+          pnpm test:database
+      - name: Stop local Supabase stack
+        if: always()
+        run: pnpm exec supabase stop --no-backup > /dev/null

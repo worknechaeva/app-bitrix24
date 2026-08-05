@@ -198,7 +198,7 @@
 - **Статус:** Active
 - **Контекст:** Task Launcher является отдельным PWA для одного заранее настроенного облачного портала и должен создавать будущие задачи от имени вошедшего пользователя.
 - **Решение:** Приложение самостоятельно выполняет Bitrix24 OAuth. Один deployment и одна его database обслуживают ровно один portal `member_id`, допускается только одна активная portal installation; пользователь не выбирает портал. Войти могут только `ACTIVE=true`, `USER_TYPE=employee` связанного портала.
-- **Последствия:** Callback с другим `member_id` отклоняется до создания profile, app session и credentials и не сохраняет вторую installation. Canonical domain обновляется только после доверенной OAuth-проверки при прежнем `member_id`. Другой портал требует отдельного deployment и отдельной database/project configuration; конкретная SQL-реализация singleton constraint выбирается на этапе schema/migrations. Supabase Auth, email/password, публичная регистрация, invite, reset password, SMTP, Supabase Custom OAuth Provider и внутренний JWT не используются в Milestone 2.
+- **Последствия:** Callback с другим `member_id` отклоняется до создания profile, app session и credentials и не сохраняет вторую installation. Canonical domain обновляется только после доверенной OAuth-проверки при прежнем `member_id`. Другой портал требует отдельного deployment и отдельной database/project configuration; конкретная SQL-реализация singleton constraint зафиксирована в DEC-030. Supabase Auth, email/password, публичная регистрация, invite, reset password, SMTP, Supabase Custom OAuth Provider и внутренний JWT не используются в Milestone 2.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -289,5 +289,15 @@
 - **Контекст:** Завершенный непроизводственный spike устранил неопределенность OAuth отдельного PWA, portal identity и admission, но production authentication и persistent storage еще не реализованы.
 - **Решение:** Для development/test подтверждены локальное API-only приложение, installation callback с portal metadata без сохранения installer credentials, code exchange, OAuth token scope `app`, отдельная проверка application permission методом `scope`, достаточность `user_brief` для active employee admission, проверки `member_id` и portal origin, refresh token rotation, неизменность provider identity после refresh, `user.current` и fail-closed admission.
 - **Последствия:** `app` является OAuth token scope, а `user_brief` — application permission и не ожидается в token response. Результат не означает готовность production OAuth flow, persistent или encrypted credentials storage, opaque app sessions, profiles/roles, Supabase gateway, migrations, production deployment или live task creation; production task client остается disabled и fail closed. Callback query parameters исключены из штатных development incoming-request access logs, но это не означает готовность production OAuth. Контролируемые callback validation errors возвращают HTTP 400, потому что callback request не может быть принят как согласованный OAuth request; admission rejection остается HTTP 403, настоящие provider/token exchange failures — HTTP 502, неожиданные внутренние ошибки — HTTP 500.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-030 — Persistent singleton для portal installation
+
+- **Дата:** 2026-08-05
+- **Статус:** Active
+- **Контекст:** Storage-independent reconciliation contract требует конкретной PostgreSQL schema, защиты от конкурентного создания второго портала и воспроизводимой проверки без удаленного Supabase project.
+- **Решение:** `portal_installations` содержит единственную строку с фиксированным ключом `1`, защищенным `PRIMARY KEY` и `CHECK`, уникальный стабильный `member_id`, canonical portal origin и timestamps. Одна `SECURITY INVOKER` PostgreSQL RPC атомарно создает installation, возвращает no-op, обновляет только origin прежнего `member_id` или возвращает mismatch. RLS включена без policies; права таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`, а `service_role` обращается к RPC только через server-only privileged gateway. Migration и database/concurrency tests запускаются в зафиксированном local Supabase stack и CI.
+- **Последствия:** `updated_at` меняется только при фактическом изменении origin; singleton invariant и гонки защищены PostgreSQL, а не предварительным application-level `SELECT`. Slice пока не подключен к production OAuth callback, не применен к удаленной schema и не означает готовую production OAuth persistence.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
