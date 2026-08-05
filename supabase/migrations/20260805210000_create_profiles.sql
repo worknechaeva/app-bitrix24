@@ -102,7 +102,7 @@ begin
     v_verified_at,
     v_verified_at
   )
-  on conflict (portal_installation_id, bitrix_user_id) do nothing
+  on conflict on constraint profiles_external_identity_key do nothing
   returning * into v_profile;
 
   if found then
