@@ -6,9 +6,27 @@ select has_table('public', 'oauth_transactions', 'oauth_transactions exists');
 select col_type_is('public', 'oauth_transactions', 'id', 'uuid', 'id is UUID');
 select col_type_is('public', 'oauth_transactions', 'state_hash', 'text', 'state_hash is text');
 select col_type_is('public', 'oauth_transactions', 'return_path', 'text', 'return_path is text');
-select col_type_is('public', 'oauth_transactions', 'created_at', 'timestamp with time zone');
-select col_type_is('public', 'oauth_transactions', 'expires_at', 'timestamp with time zone');
-select col_type_is('public', 'oauth_transactions', 'consumed_at', 'timestamp with time zone');
+select col_type_is(
+  'public',
+  'oauth_transactions',
+  'created_at',
+  'timestamp with time zone',
+  'created_at is timestamptz'
+);
+select col_type_is(
+  'public',
+  'oauth_transactions',
+  'expires_at',
+  'timestamp with time zone',
+  'expires_at is timestamptz'
+);
+select col_type_is(
+  'public',
+  'oauth_transactions',
+  'consumed_at',
+  'timestamp with time zone',
+  'consumed_at is timestamptz'
+);
 select col_not_null('public', 'oauth_transactions', 'id', 'id is required');
 select col_not_null('public', 'oauth_transactions', 'state_hash', 'state_hash is required');
 select col_not_null('public', 'oauth_transactions', 'return_path', 'return_path is required');
