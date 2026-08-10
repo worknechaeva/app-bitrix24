@@ -31,6 +31,10 @@ export function canonicalPortalOriginFromClientEndpoint(clientEndpoint: string):
   return canonicalPortalOrigin(clientEndpoint, "/rest/");
 }
 
+export function canonicalBitrix24ClientEndpoint(clientEndpoint: string): string {
+  return `${canonicalPortalOrigin(clientEndpoint, "/rest/")}/rest/`;
+}
+
 export function canonicalPortalOriginFromConfiguredOrigin(portalOrigin: string): string {
   return canonicalPortalOrigin(portalOrigin, "/");
 }
