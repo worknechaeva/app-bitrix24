@@ -53,6 +53,29 @@ export type OAuthTransactionConsumeTransport = (
   arguments_: OAuthTransactionConsumeArguments,
 ) => Promise<OAuthTransactionResponse>;
 
+export type AppSessionCreateArguments = {
+  p_portal_installation_id: number;
+  p_profile_id: string;
+  p_token_hash: string;
+};
+
+export type AppSessionTokenHashArguments = {
+  p_token_hash: string;
+};
+
+export type AppSessionRpcResponse = {
+  data: unknown;
+  error: unknown;
+};
+
+export type AppSessionCreateTransport = (
+  arguments_: AppSessionCreateArguments,
+) => Promise<AppSessionRpcResponse>;
+
+export type AppSessionTokenHashTransport = (
+  arguments_: AppSessionTokenHashArguments,
+) => Promise<AppSessionRpcResponse>;
+
 function createPrivilegedClient() {
   const configuration = getSupabasePrivilegedConfiguration();
   return createClient(configuration.url, configuration.serviceRoleKey, {
@@ -82,4 +105,16 @@ export const createOAuthTransactionRow: OAuthTransactionCreateTransport = async 
 
 export const consumeOAuthTransactionRpc: OAuthTransactionConsumeTransport = async (arguments_) => {
   return createPrivilegedClient().rpc("consume_oauth_transaction", arguments_);
+};
+
+export const createAppSessionRpc: AppSessionCreateTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("create_app_session", arguments_);
+};
+
+export const resolveAppSessionRpc: AppSessionTokenHashTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("resolve_app_session", arguments_);
+};
+
+export const revokeAppSessionRpc: AppSessionTokenHashTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("revoke_app_session", arguments_);
 };

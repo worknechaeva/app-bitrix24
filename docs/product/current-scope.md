@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations`, `profiles` и `oauth_transactions`. Production OAuth routes пока не используют persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions`. Production OAuth routes пока не используют persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
 
 ## Формат продукта и портал
 
@@ -34,6 +34,9 @@
 - `return_path` канонизируется как root-relative внутренний путь; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители отклоняются.
 - Consumption выполняется одной атомарной PostgreSQL RPC. Неизвестный, просроченный и уже использованный state возвращают отдельные outcomes без `return_path`; при конкурентных callback только один получает `consumed`.
 - Persistent OAuth transaction foundation пока не подключен к production OAuth start/callback routes.
+- Persistent app session foundation создает server-only token из 32 случайных байтов в `base64url`, передает в repository и БД только полный lowercase SHA-256 hash и использует database time для абсолютного TTL ровно 30 дней. Sliding expiration отсутствует, обычный resolve не изменяет expiry.
+- Session создается только для текущего active profile с допустимыми Bitrix snapshots. Resolve возвращает минимальный server-side actor context с актуальной ролью из profile; unknown, expired, revoked и profile inactive не раскрывают actor identity. Отзыв одной session атомарно устанавливает `revoked_at` один раз.
+- Persistent app session foundation пока не подключен к production OAuth callback, не устанавливает browser cookie и не является готовой production authentication.
 
 Первый administrator задается через server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Роль назначается только после успешного OAuth-входа и проверки `member_id`, `ACTIVE=true` и `USER_TYPE=employee`. Bootstrap выполняется один раз, фиксируется в `admin_bootstrapped_at`, после проверки переменная удаляется из environment. Аварийное восстановление будет отдельной будущей server-only процедурой; персональный Bitrix user ID не хранится в документации или Git.
 
@@ -182,7 +185,7 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
 
-Для реализованных `portal_installations`, `profiles` и `oauth_transactions` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth routes.
+Для реализованных `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth routes.
 
 ## Technical spikes Milestone 2
 
