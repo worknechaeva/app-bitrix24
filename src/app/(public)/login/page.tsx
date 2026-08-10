@@ -1,11 +1,12 @@
+import Link from "next/link";
 import { ArrowRight, LockKeyhole, Rocket, ShieldCheck } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { loginAsMock } from "@/server/auth/mock-session";
+import { getApplicationRuntimeMode } from "@/server/auth/runtime-mode";
 
 export default function LoginPage() {
-  const mockAvailable = process.env.NODE_ENV !== "production";
+  const mockAvailable = getApplicationRuntimeMode() === "mock";
   return (
     <main className="bg-muted/50 grid min-h-svh place-items-center px-4 py-10">
       <div className="w-full max-w-md">
@@ -17,7 +18,11 @@ export default function LoginPage() {
         <Card className="shadow-lg">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Вход в Task Launcher</CardTitle>
-            <CardDescription>Первый milestone работает без внешних аккаунтов и секретов.</CardDescription>
+            <CardDescription>
+              {mockAvailable
+                ? "Первый milestone работает без внешних аккаунтов и секретов."
+                : "Вход через корпоративный портал Bitrix24."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {mockAvailable ? (
@@ -56,11 +61,14 @@ export default function LoginPage() {
                 </p>
               </>
             ) : (
-              <Alert>
-                <LockKeyhole className="size-4" />
-                <AlertTitle>Авторизация не настроена</AlertTitle>
-                <AlertDescription>Подключите Supabase Auth перед production-запуском.</AlertDescription>
-              </Alert>
+              <Button asChild size="lg" className="min-h-12 w-full justify-between">
+                <Link href="/api/bitrix24/oauth/start">
+                  <span className="flex items-center gap-2">
+                    <LockKeyhole className="size-5" /> Войти через Bitrix24
+                  </span>
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
             )}
           </CardContent>
         </Card>

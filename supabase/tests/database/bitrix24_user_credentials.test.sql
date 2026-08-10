@@ -200,5 +200,52 @@ select ok(not exists (
     and column_name in ('access_token', 'refresh_token', 'encryption_key', 'client_secret', 'bitrix_user_id', 'email', 'role', 'oauth_response', 'provider_error')
 ), 'credentials contain no plaintext token, key, duplicated identity, or raw provider fields');
 
+select has_function(
+  'public',
+  'inspect_bitrix24_credentials_for_verified_oauth',
+  array['smallint','uuid'],
+  'verified OAuth inspection RPC signature exists'
+);
+select has_function(
+  'public',
+  'replace_bitrix24_credentials_after_verified_oauth',
+  array['smallint','uuid','bigint','bigint','text','text','text','text','text','text','smallint','text','timestamp with time zone'],
+  'verified OAuth replacement RPC signature exists'
+);
+select is(
+  pg_get_function_result('public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)'::regprocedure),
+  'TABLE(outcome bitrix24_credential_oauth_inspection_outcome, current_token_version bigint, next_token_version bigint)',
+  'inspection returns version-only context'
+);
+select is(
+  pg_get_function_result('public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)'::regprocedure),
+  'TABLE(outcome bitrix24_credential_oauth_replacement_outcome, token_version bigint)',
+  'replacement returns only outcome and version'
+);
+select ok(not (select prosecdef from pg_proc where oid =
+  'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)'::regprocedure),
+  'inspection is security invoker'
+);
+select ok(not (select prosecdef from pg_proc where oid =
+  'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)'::regprocedure),
+  'replacement is security invoker'
+);
+select ok(
+  not has_function_privilege('anon', 'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)', 'execute')
+  and not has_function_privilege('authenticated', 'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)', 'execute')
+  and not has_function_privilege('anon', 'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)', 'execute')
+  and not has_function_privilege('authenticated', 'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)', 'execute'),
+  'browser roles cannot execute verified OAuth credential RPCs'
+);
+select ok(
+  has_function_privilege('service_role', 'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)', 'execute')
+  and has_function_privilege('service_role', 'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)', 'execute'),
+  'service_role can execute verified OAuth credential RPCs'
+);
+select ok(not has_table_privilege('service_role', 'public.bitrix24_user_credentials', 'delete')
+  and not has_table_privilege('service_role', 'public.bitrix24_user_credentials', 'truncate'),
+  'verified OAuth replacement does not expand destructive table privileges'
+);
+
 select * from finish();
 rollback;

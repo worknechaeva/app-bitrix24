@@ -7,6 +7,7 @@ import type {
   Bitrix24CredentialReauthTransition,
   Bitrix24CredentialRepository,
   Bitrix24CredentialRotation,
+  Bitrix24VerifiedOAuthReplacement,
 } from "./bitrix24-credential-repository";
 import { BITRIX24_CREDENTIAL_ENCRYPTION_VERSION } from "./bitrix24-credential-repository";
 import { Bitrix24CredentialCrypto } from "./bitrix24-credential-crypto";
@@ -137,6 +138,44 @@ export class Bitrix24CredentialService {
   }): Promise<Bitrix24CredentialReauthTransition> {
     try {
       return await this.repository.markReauthRequired(input);
+    } catch {
+      throw new Bitrix24CredentialServiceError();
+    }
+  }
+
+  async replaceAfterVerifiedOAuth(input: {
+    portalInstallationId: number;
+    profileId: string;
+    accessToken: string;
+    refreshToken: string;
+    clientEndpoint: string;
+    accessTokenExpiresAt?: string | null;
+  }): Promise<Bitrix24VerifiedOAuthReplacement> {
+    try {
+      const context = await this.repository.inspectForVerifiedOAuth({
+        portalInstallationId: input.portalInstallationId,
+        profileId: input.profileId,
+      });
+      if (context.outcome !== "missing" && context.outcome !== "replaceable") return context;
+
+      const nextTokenVersion = context.nextTokenVersion;
+      const encrypted = this.crypto.encryptTokenPair({
+        accessToken: input.accessToken,
+        refreshToken: input.refreshToken,
+        portalInstallationId: input.portalInstallationId,
+        profileId: input.profileId,
+        tokenVersion: nextTokenVersion,
+      });
+      return await this.repository.replaceAfterVerifiedOAuth({
+        portalInstallationId: input.portalInstallationId,
+        profileId: input.profileId,
+        expectedCurrentTokenVersion: context.outcome === "missing" ? null : context.currentTokenVersion,
+        newTokenVersion: nextTokenVersion,
+        ...encrypted,
+        encryptionVersion: BITRIX24_CREDENTIAL_ENCRYPTION_VERSION,
+        clientEndpoint: canonicalBitrix24ClientEndpoint(input.clientEndpoint),
+        accessTokenExpiresAt: input.accessTokenExpiresAt ?? null,
+      });
     } catch {
       throw new Bitrix24CredentialServiceError();
     }

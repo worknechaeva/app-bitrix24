@@ -21,8 +21,14 @@ export function verifyOAuthSpikePortalIdentity(
     throw new OAuthSpikeError("portal_mismatch");
   }
 
-  const canonicalPortalOrigin = canonicalPortalOriginFromClientEndpoint(result.clientEndpoint);
-  const canonicalConfiguredOrigin = canonicalPortalOriginFromConfiguredOrigin(configuredPortalOrigin);
+  let canonicalPortalOrigin: string;
+  let canonicalConfiguredOrigin: string;
+  try {
+    canonicalPortalOrigin = canonicalPortalOriginFromClientEndpoint(result.clientEndpoint);
+    canonicalConfiguredOrigin = canonicalPortalOriginFromConfiguredOrigin(configuredPortalOrigin);
+  } catch {
+    throw new OAuthSpikeError("invalid_client_endpoint");
+  }
   if (canonicalPortalOrigin !== canonicalConfiguredOrigin) {
     throw new OAuthSpikeError("portal_origin_mismatch");
   }

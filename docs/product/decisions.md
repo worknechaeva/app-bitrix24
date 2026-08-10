@@ -298,7 +298,7 @@
 - **Статус:** Active
 - **Контекст:** Storage-independent reconciliation contract требует конкретной PostgreSQL schema, защиты от конкурентного создания второго портала и воспроизводимой проверки без удаленного Supabase project.
 - **Решение:** `portal_installations` содержит единственную строку с фиксированным ключом `1`, защищенным `PRIMARY KEY` и `CHECK`, уникальный стабильный `member_id`, canonical portal origin и timestamps. Одна `SECURITY INVOKER` PostgreSQL RPC атомарно создает installation, возвращает no-op, обновляет только origin прежнего `member_id` или возвращает mismatch. RLS включена без policies; права таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`, а `service_role` обращается к RPC только через server-only privileged gateway. Migration и database/concurrency tests запускаются в зафиксированном local Supabase stack и CI.
-- **Последствия:** `updated_at` меняется только при фактическом изменении origin; singleton invariant и гонки защищены PostgreSQL, а не предварительным application-level `SELECT`. Slice пока не подключен к production OAuth callback, не применен к удаленной schema и не означает готовую production OAuth persistence.
+- **Последствия:** `updated_at` меняется только при фактическом изменении origin; singleton invariant и гонки защищены PostgreSQL, а не предварительным application-level `SELECT`. Slice подключен к локальному production OAuth callback по DEC-035, но не применен к удаленной schema и не означает готовый deployment.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -308,7 +308,7 @@
 - **Статус:** Active
 - **Контекст:** После доверенной проверки portal identity и active employee admission локальная identity должна создаваться конкурентно-безопасно, не позволяя повторному OAuth-входу изменить локальные полномочия или реактивировать заблокированный profile.
 - **Решение:** `profiles` использует внутренний UUID, внешний unique key `portal_installation_id + bitrix_user_id`, text role с `CHECK` для `editor/administrator`, `is_active` и минимальные snapshots `bitrix_active/bitrix_user_type`. Одна `SECURITY INVOKER` PostgreSQL RPC принимает только уже проверенный active employee, атомарно создает `editor`, обновляет только snapshots и verification timestamp и возвращает отдельный результат `inactive` без изменения role или `is_active`.
-- **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Bootstrap administrator, role management, last-admin guard, административная блокировка, sessions, credentials и production OAuth callback integration остаются будущими; удаленная Supabase schema не изменялась.
+- **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Production OAuth callback integration реализована локально по DEC-035; bootstrap administrator, role management, last-admin guard и административная блокировка остаются будущими. Удаленная Supabase schema не изменялась.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -318,7 +318,7 @@
 - **Статус:** Active
 - **Контекст:** Будущий production OAuth flow требует одноразовый state, который переживает server process и не раскрывает raw value через persistent boundary.
 - **Решение:** Server-only сервис генерирует 32 случайных байта в `base64url`, вычисляет полный lowercase SHA-256 hash и передает repository только hash с каноническим внутренним `return_path`. `oauth_transactions` использует database time и TTL ровно 10 минут; одна `SECURITY INVOKER` PostgreSQL RPC с row lock атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`.
-- **Последствия:** Raw state не хранится, не логируется и не входит в storage errors. Только первый допустимый consumer получает `return_path`; external и protocol-relative redirects, backslash, control characters и опасные percent-encoded разделители запрещены application и database checks. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute узкой RPC. Slice не подключен к production OAuth routes и не применен к удаленной Supabase schema.
+- **Последствия:** Raw state не хранится, не логируется и не входит в storage errors. Только первый допустимый consumer получает `return_path`; external и protocol-relative redirects, backslash, control characters и опасные percent-encoded разделители запрещены application и database checks. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute узкой RPC. Slice подключен к локальным production OAuth routes по DEC-035 и не применен к удаленной Supabase schema.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -328,7 +328,7 @@
 - **Статус:** Active
 - **Контекст:** Будущий production OAuth flow требует собственной server-side identity без Supabase Auth/JWT и без передачи profile, role или OAuth credentials браузеру.
 - **Решение:** Server-only session service генерирует 32 случайных байта в `base64url`, вычисляет полный lowercase SHA-256 hash и передает repository и PostgreSQL только hash. `app_sessions` связывает session с profile и portal composite foreign key; узкие `SECURITY INVOKER` RPC создают session только для текущего active employee profile, разрешают hash в минимальный actor context с актуальной ролью из `profiles` и атомарно устанавливают `revoked_at`. Database time задает абсолютный TTL ровно 30 дней; sliding expiration отсутствует, caller не выбирает TTL, обычный resolve не продлевает expiry.
-- **Последствия:** Raw token не хранится, не логируется и не входит в storage errors. Unknown, expired, revoked и profile inactive outcomes не раскрывают actor identity; inactive profile и недопустимые Bitrix snapshots fail closed. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute трех session RPC. Foundation хранится в Postgres без Redis/KV, но еще не подключен к production OAuth callback, session rotation, browser cookie или logout и не является готовой production authentication.
+- **Последствия:** Raw token не хранится, не логируется и не входит в storage errors. Unknown, expired, revoked и profile inactive outcomes не раскрывают actor identity; inactive profile и недопустимые Bitrix snapshots fail closed. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute трех session RPC. Foundation хранится в Postgres без Redis/KV и подключен к локальным callback/session rotation/cookie/logout по DEC-035; удаленная schema и deployment не изменялись.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -338,6 +338,16 @@
 - **Статус:** Active
 - **Контекст:** Будущим server-only Bitrix24 Identity, Directory и Task operations нужна persistent user-scoped token pair без plaintext в profiles, repository, gateway или БД и с корректным поведением конкурентного refresh.
 - **Решение:** `bitrix24_user_credentials` хранится отдельно от profiles и содержит отдельно зашифрованные AES-256-GCM access/refresh envelopes формата version 1. Ключ — ровно 32 bytes в server-only base64 environment вне БД; каждый token получает отдельный random 12-byte IV, а authenticated AAD связывает marker, portal, profile, token kind и `token_version`. Initial create устанавливает `active` и `token_version=1`; атомарная RPC заменяет pair только при совпадении expected version. Отдельный optimistic transition в `reauth_required` защищает новую pair от stale refresh failure, а `disabled` остается отдельным запрещающим состоянием без automatic enable.
-- **Последствия:** Plaintext token pair существует только в server memory credential service и не пересекает persistence boundary; tampering или AAD mismatch fail closed. Inactive profile, `reauth_required` и `disabled` не разрешают credentials. RLS и grants закрывают browser/Data API, service-role вызывает только четыре узкие `SECURITY INVOKER` RPC. Production OAuth callback, реальный provider refresh и recovery/reactivation flow не подключены; удаленная Supabase schema не изменена.
+- **Последствия:** Plaintext token pair существует только в server memory credential service и не пересекает persistence boundary; tampering или AAD mismatch fail closed. Inactive profile и `disabled` не разрешают credentials; `reauth_required` возвращается в active только verified OAuth replacement по DEC-035. RLS и grants закрывают browser/Data API, service-role вызывает шесть узких `SECURITY INVOKER` RPC. Production OAuth callback подключен локально; реальный provider refresh и recovery administration не подключены, удаленная Supabase schema не изменена.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
+
+## DEC-035 — Production OAuth authentication flow
+
+- **Дата:** 2026-08-11
+- **Статус:** Active
+- **Контекст:** Persistent portal, profile, OAuth transaction, encrypted credentials и app session foundations были изолированными slices и не образовывали production authentication contour. Повторный verified OAuth login не мог безопасно заменить существующую encrypted pair.
+- **Решение:** Production OAuth использует отдельную live configuration и live `Bitrix24IdentityClient`, persistent hash-only state, trusted provider verification `member_id`/`app`/`user_brief`/current active employee, portal и profile reconciliation, узкий version-safe verified OAuth credentials create/replacement, rotation browser session и cookie `__Host-task-launcher-session` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`. Actor разрешается только через persistent app session; logout отзывает session и всегда очищает cookie. Mock auth остается development/test-only.
+- **Последствия:** `reauth_required` может вернуться в `active` только после нового verified OAuth login; `disabled` автоматически не реактивируется. Production callback не выполняет immediate provider refresh. Пока persistent launcher projects, Directory и submissions не подключены, live authenticated UI показывает безопасный placeholder и не выдает mock business data. Remote Supabase, deployment и test portal не изменялись, поэтому решение не означает завершенный production deployment.
 - **Связанные QA-записи:** —
 - **Заменяет:** —

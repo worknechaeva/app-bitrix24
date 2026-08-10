@@ -20,6 +20,8 @@ function repositoryStub(): Bitrix24CredentialRepository {
     resolve: vi.fn(async () => ({ outcome: "unknown" }) as const),
     rotate: vi.fn(async () => ({ outcome: "version_conflict" }) as const),
     markReauthRequired: vi.fn(async () => ({ outcome: "unknown" }) as const),
+    inspectForVerifiedOAuth: vi.fn(async () => ({ outcome: "profile_unknown" }) as const),
+    replaceAfterVerifiedOAuth: vi.fn(async () => ({ outcome: "profile_unknown" }) as const),
   };
 }
 
@@ -47,6 +49,67 @@ function encryptedCredential(tokenVersion = 1): EncryptedBitrix24Credential {
 }
 
 describe("Bitrix24 credential service boundary", () => {
+  it("encrypts verified OAuth replacement with the inspected next version", async () => {
+    const repository = repositoryStub();
+    vi.mocked(repository.inspectForVerifiedOAuth).mockResolvedValueOnce({
+      outcome: "replaceable",
+      currentTokenVersion: 4,
+      nextTokenVersion: 5,
+    });
+    vi.mocked(repository.replaceAfterVerifiedOAuth).mockResolvedValueOnce({
+      outcome: "replaced",
+      tokenVersion: 5,
+    });
+    const crypto = new Bitrix24CredentialCrypto(key);
+    const service = new Bitrix24CredentialService(repository, crypto);
+
+    await expect(
+      service.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId,
+        accessToken: "verified-access",
+        refreshToken: "verified-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "replaced", tokenVersion: 5 });
+
+    const persisted = vi.mocked(repository.replaceAfterVerifiedOAuth).mock.calls[0]?.[0];
+    expect(persisted).toMatchObject({
+      expectedCurrentTokenVersion: 4,
+      newTokenVersion: 5,
+      accessTokenExpiresAt: null,
+    });
+    expect(JSON.stringify(persisted)).not.toContain("verified-access");
+    expect(JSON.stringify(persisted)).not.toContain("verified-refresh");
+    expect(
+      crypto.decryptToken(persisted!.encryptedAccessToken, {
+        portalInstallationId: 1,
+        profileId,
+        tokenKind: "access",
+        tokenVersion: 5,
+      }),
+    ).toBe("verified-access");
+  });
+
+  it.each(["disabled", "profile_unknown", "profile_inactive"] as const)(
+    "does not encrypt or persist a %s replacement context",
+    async (outcome) => {
+      const repository = repositoryStub();
+      vi.mocked(repository.inspectForVerifiedOAuth).mockResolvedValueOnce({ outcome });
+      const service = new Bitrix24CredentialService(repository, new Bitrix24CredentialCrypto(key));
+      await expect(
+        service.replaceAfterVerifiedOAuth({
+          portalInstallationId: 1,
+          profileId,
+          accessToken: "access",
+          refreshToken: "refresh",
+          clientEndpoint: endpoint,
+        }),
+      ).resolves.toEqual({ outcome });
+      expect(repository.replaceAfterVerifiedOAuth).not.toHaveBeenCalled();
+    },
+  );
+
   it("passes only encrypted envelopes and metadata to initial persistence", async () => {
     const repository = repositoryStub();
     vi.mocked(repository.createInitial).mockResolvedValueOnce({ outcome: "profile_unknown" });

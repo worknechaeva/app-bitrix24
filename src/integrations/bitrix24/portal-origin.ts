@@ -1,6 +1,13 @@
 import "server-only";
 
-import { OAuthSpikeError } from "./spike/errors";
+export class Bitrix24PortalOriginError extends Error {
+  readonly code = "invalid_bitrix24_portal_origin";
+
+  constructor() {
+    super("Invalid Bitrix24 portal origin");
+    this.name = "Bitrix24PortalOriginError";
+  }
+}
 
 function canonicalPortalOrigin(value: string, expectedPath: "/" | "/rest/"): string {
   let url: URL;
@@ -8,7 +15,7 @@ function canonicalPortalOrigin(value: string, expectedPath: "/" | "/rest/"): str
   try {
     url = new URL(value);
   } catch {
-    throw new OAuthSpikeError("invalid_client_endpoint");
+    throw new Bitrix24PortalOriginError();
   }
 
   if (
@@ -21,7 +28,7 @@ function canonicalPortalOrigin(value: string, expectedPath: "/" | "/rest/"): str
     url.hash !== "" ||
     url.pathname !== expectedPath
   ) {
-    throw new OAuthSpikeError("invalid_client_endpoint");
+    throw new Bitrix24PortalOriginError();
   }
 
   return url.origin;

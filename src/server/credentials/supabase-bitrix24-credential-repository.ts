@@ -5,12 +5,16 @@ import { canonicalBitrix24ClientEndpoint } from "@/integrations/bitrix24/portal-
 import {
   createBitrix24UserCredentialsRpc,
   markBitrix24CredentialsReauthRequiredRpc,
+  inspectBitrix24CredentialsForVerifiedOAuthRpc,
+  replaceBitrix24CredentialsAfterVerifiedOAuthRpc,
   resolveBitrix24UserCredentialsRpc,
   rotateBitrix24UserCredentialsRpc,
   type CredentialCreateTransport,
   type CredentialMarkReauthTransport,
   type CredentialResolveTransport,
   type CredentialRotateTransport,
+  type CredentialVerifiedOAuthInspectTransport,
+  type CredentialVerifiedOAuthReplaceTransport,
 } from "@/server/database/supabase-privileged-gateway";
 import {
   BITRIX24_CREDENTIAL_ENCRYPTION_VERSION,
@@ -20,6 +24,8 @@ import {
   type Bitrix24CredentialRepository,
   type Bitrix24CredentialResolution,
   type Bitrix24CredentialRotation,
+  type Bitrix24VerifiedOAuthReplacement,
+  type Bitrix24VerifiedOAuthReplacementContext,
   type EncryptedBitrix24Credential,
   type EncryptedCredentialWrite,
   isCanonicalBase64Url,
@@ -155,6 +161,50 @@ const reauthResultSchema = z
   )
   .length(1);
 
+const replacementContextSchema = z
+  .array(
+    z.discriminatedUnion("outcome", [
+      z
+        .object({
+          outcome: z.literal("missing"),
+          current_token_version: z.null(),
+          next_token_version: z.literal(1),
+        })
+        .strict(),
+      z
+        .object({
+          outcome: z.literal("replaceable"),
+          current_token_version: z.number().int().positive(),
+          next_token_version: z.number().int().positive(),
+        })
+        .strict(),
+      z
+        .object({
+          outcome: z.enum(["disabled", "profile_unknown", "profile_inactive"]),
+          current_token_version: z.null(),
+          next_token_version: z.null(),
+        })
+        .strict(),
+    ]),
+  )
+  .length(1);
+
+const verifiedReplacementResultSchema = z
+  .array(
+    z.discriminatedUnion("outcome", [
+      z
+        .object({ outcome: z.enum(["created", "replaced"]), token_version: z.number().int().positive() })
+        .strict(),
+      z
+        .object({
+          outcome: z.enum(["version_conflict", "disabled", "profile_unknown", "profile_inactive"]),
+          token_version: z.null(),
+        })
+        .strict(),
+    ]),
+  )
+  .length(1);
+
 export class Bitrix24CredentialStorageError extends Error {
   readonly code = "bitrix24_credential_storage_failure";
 
@@ -225,6 +275,8 @@ export class SupabaseBitrix24CredentialRepository implements Bitrix24CredentialR
     private readonly resolveCredentials: CredentialResolveTransport,
     private readonly rotateCredentials: CredentialRotateTransport,
     private readonly markReauth: CredentialMarkReauthTransport,
+    private readonly inspectVerifiedOAuth: CredentialVerifiedOAuthInspectTransport = inspectBitrix24CredentialsForVerifiedOAuthRpc,
+    private readonly replaceVerifiedOAuth: CredentialVerifiedOAuthReplaceTransport = replaceBitrix24CredentialsAfterVerifiedOAuthRpc,
   ) {}
 
   async createInitial(input: EncryptedCredentialWrite): Promise<Bitrix24CredentialCreation> {
@@ -304,6 +356,65 @@ export class SupabaseBitrix24CredentialRepository implements Bitrix24CredentialR
     return parsed.data[0];
   }
 
+  async inspectForVerifiedOAuth(input: {
+    portalInstallationId: number;
+    profileId: string;
+  }): Promise<Bitrix24VerifiedOAuthReplacementContext> {
+    const parsedInput = identityInputSchema.safeParse(input);
+    if (!parsedInput.success) throw new Bitrix24CredentialInputError();
+    const response = await this.safeCall(() =>
+      this.inspectVerifiedOAuth({
+        p_portal_installation_id: parsedInput.data.portalInstallationId,
+        p_profile_id: parsedInput.data.profileId,
+      }),
+    );
+    const parsed = replacementContextSchema.safeParse(response.data);
+    if (!parsed.success) throw new Bitrix24CredentialStorageError();
+    const row = parsed.data[0];
+    if (row.outcome === "missing") return { outcome: "missing", nextTokenVersion: 1 };
+    if (row.outcome === "replaceable") {
+      if (row.next_token_version !== row.current_token_version + 1) {
+        throw new Bitrix24CredentialStorageError();
+      }
+      return {
+        outcome: "replaceable",
+        currentTokenVersion: row.current_token_version,
+        nextTokenVersion: row.next_token_version,
+      };
+    }
+    return { outcome: row.outcome };
+  }
+
+  async replaceAfterVerifiedOAuth(
+    input: EncryptedCredentialWrite & {
+      expectedCurrentTokenVersion: number | null;
+      newTokenVersion: number;
+    },
+  ): Promise<Bitrix24VerifiedOAuthReplacement> {
+    const parsedInput = writeInputBaseSchema
+      .extend({
+        expectedCurrentTokenVersion: z.number().int().positive().nullable(),
+        newTokenVersion: z.number().int().positive(),
+      })
+      .strict()
+      .superRefine(validateWriteInput)
+      .safeParse(input);
+    if (!parsedInput.success) throw new Bitrix24CredentialInputError();
+    const response = await this.safeCall(() =>
+      this.replaceVerifiedOAuth({
+        ...writeArguments(parsedInput.data),
+        p_expected_current_token_version: parsedInput.data.expectedCurrentTokenVersion,
+        p_new_token_version: parsedInput.data.newTokenVersion,
+      }),
+    );
+    const parsed = verifiedReplacementResultSchema.safeParse(response.data);
+    if (!parsed.success) throw new Bitrix24CredentialStorageError();
+    const row = parsed.data[0];
+    return row.outcome === "created" || row.outcome === "replaced"
+      ? { outcome: row.outcome, tokenVersion: row.token_version }
+      : { outcome: row.outcome };
+  }
+
   private async safeCall(call: () => Promise<{ data: unknown; error: unknown }>) {
     let response;
     try {
@@ -322,5 +433,7 @@ export function createSupabaseBitrix24CredentialRepository(): Bitrix24Credential
     resolveBitrix24UserCredentialsRpc,
     rotateBitrix24UserCredentialsRpc,
     markBitrix24CredentialsReauthRequiredRpc,
+    inspectBitrix24CredentialsForVerifiedOAuthRpc,
+    replaceBitrix24CredentialsAfterVerifiedOAuthRpc,
   );
 }

@@ -43,6 +43,15 @@ export type Bitrix24CredentialReauthTransition = {
     "marked" | "already_reauth_required" | "unknown" | "profile_inactive" | "disabled" | "version_conflict";
 };
 
+export type Bitrix24VerifiedOAuthReplacementContext =
+  | { outcome: "missing"; nextTokenVersion: 1 }
+  | { outcome: "replaceable"; currentTokenVersion: number; nextTokenVersion: number }
+  | { outcome: "disabled" | "profile_unknown" | "profile_inactive" };
+
+export type Bitrix24VerifiedOAuthReplacement =
+  | { outcome: "created" | "replaced"; tokenVersion: number }
+  | { outcome: "version_conflict" | "disabled" | "profile_unknown" | "profile_inactive" };
+
 export type EncryptedCredentialWrite = {
   portalInstallationId: number;
   profileId: string;
@@ -87,4 +96,18 @@ export interface Bitrix24CredentialRepository {
     profileId: string;
     expectedTokenVersion: number;
   }): Promise<Bitrix24CredentialReauthTransition>;
+
+  /** Returns version-only context after a fresh, verified OAuth admission. */
+  inspectForVerifiedOAuth(input: {
+    portalInstallationId: number;
+    profileId: string;
+  }): Promise<Bitrix24VerifiedOAuthReplacementContext>;
+
+  /** Atomically creates or replaces the full encrypted pair after verified OAuth. */
+  replaceAfterVerifiedOAuth(
+    input: EncryptedCredentialWrite & {
+      expectedCurrentTokenVersion: number | null;
+      newTokenVersion: number;
+    },
+  ): Promise<Bitrix24VerifiedOAuthReplacement>;
 }

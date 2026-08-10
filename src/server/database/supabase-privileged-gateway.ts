@@ -99,6 +99,11 @@ export type CredentialRotateArguments = CredentialCreateArguments & { p_expected
 export type CredentialMarkReauthArguments = CredentialIdentityArguments & {
   p_expected_token_version: number;
 };
+export type CredentialVerifiedOAuthInspectArguments = CredentialIdentityArguments;
+export type CredentialVerifiedOAuthReplaceArguments = CredentialCreateArguments & {
+  p_expected_current_token_version: number | null;
+  p_new_token_version: number;
+};
 
 export type CredentialRpcResponse = {
   data: unknown;
@@ -116,6 +121,12 @@ export type CredentialRotateTransport = (
 ) => Promise<CredentialRpcResponse>;
 export type CredentialMarkReauthTransport = (
   arguments_: CredentialMarkReauthArguments,
+) => Promise<CredentialRpcResponse>;
+export type CredentialVerifiedOAuthInspectTransport = (
+  arguments_: CredentialVerifiedOAuthInspectArguments,
+) => Promise<CredentialRpcResponse>;
+export type CredentialVerifiedOAuthReplaceTransport = (
+  arguments_: CredentialVerifiedOAuthReplaceArguments,
 ) => Promise<CredentialRpcResponse>;
 
 function createPrivilegedClient() {
@@ -176,3 +187,11 @@ export const rotateBitrix24UserCredentialsRpc: CredentialRotateTransport = async
 export const markBitrix24CredentialsReauthRequiredRpc: CredentialMarkReauthTransport = async (arguments_) => {
   return createPrivilegedClient().rpc("mark_bitrix24_credentials_reauth_required", arguments_);
 };
+
+export const inspectBitrix24CredentialsForVerifiedOAuthRpc: CredentialVerifiedOAuthInspectTransport = async (
+  arguments_,
+) => createPrivilegedClient().rpc("inspect_bitrix24_credentials_for_verified_oauth", arguments_);
+
+export const replaceBitrix24CredentialsAfterVerifiedOAuthRpc: CredentialVerifiedOAuthReplaceTransport =
+  async (arguments_) =>
+    createPrivilegedClient().rpc("replace_bitrix24_credentials_after_verified_oauth", arguments_);

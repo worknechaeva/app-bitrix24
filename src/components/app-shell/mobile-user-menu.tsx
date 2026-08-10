@@ -12,10 +12,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import type { ApplicationSession } from "@/server/auth/application-session";
 
 type MobileUserMenuProps = {
-  user: { name: string; role: "admin" | "editor" };
-  logoutAction: () => Promise<void>;
+  user: ApplicationSession;
+  logoutAction: () => Promise<never>;
 };
 
 export function MobileUserMenu({ user, logoutAction }: MobileUserMenuProps) {
@@ -43,9 +44,11 @@ export function MobileUserMenu({ user, logoutAction }: MobileUserMenuProps) {
       <SheetContent side="right" className="w-[min(88vw,22rem)]">
         <SheetHeader className="pt-16">
           <SheetTitle>{user.name}</SheetTitle>
-          <SheetDescription>Профиль текущей mock-сессии</SheetDescription>
+          <SheetDescription>
+            {user.mode === "mock" ? "Профиль текущей mock-сессии" : "Профиль текущей app session"}
+          </SheetDescription>
           <Badge variant="outline" className="mt-3 w-fit">
-            {user.role === "admin" ? "Администратор" : "Редактор"}
+            {user.role === "administrator" ? "Администратор" : "Редактор"}
           </Badge>
         </SheetHeader>
         <SheetFooter>

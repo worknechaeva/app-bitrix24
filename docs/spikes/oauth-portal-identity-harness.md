@@ -1,9 +1,9 @@
 # OAuth и portal identity: локальный spike harness
 
-Этот временный harness использовался для завершенного development/test spike Bitrix24 OAuth и portal identity отдельного PWA. Он доступен только в development/test, не подключен к production application flow и не означает, что production OAuth, profiles, app sessions или persistent credentials реализованы.
+Этот временный harness использовался для завершенного development/test spike Bitrix24 OAuth и portal identity отдельного PWA. Он доступен только в development/test и не подключен к production application flow. Production authentication contour позднее реализован отдельно по DEC-035 поверх persistent profiles, app sessions и encrypted credentials.
 
 Следующая live campaign выполняется только после отдельного подтверждения пользователя и предоставления непроизводственного портала, local application, синтетических пользователей и временного HTTPS origin.
-Callback route вместе с query parameters исключен из штатных development incoming-request access logs. Это не означает готовность production OAuth.
+Callback route вместе с query parameters исключен из штатных development incoming-request access logs. Эта мера относится только к временному spike и не является частью production runtime.
 
 ## Границы
 
@@ -100,6 +100,6 @@ Browser получает только `success/error`, совпадение memb
 
 1. Callback query parameters исключены из development access logs до следующей live OAuth campaign.
 2. Follow-up завершен: безопасные OAuth callback validation errors возвращают HTTP 400, а настоящие upstream failures сохраняют HTTP 502.
-3. Завершение suppression и validation-status follow-up не означает готовность production OAuth.
+3. Завершение suppression и validation-status follow-up подтверждало только spike; production flow реализован позднее отдельно по DEC-035.
 
 Live OAuth campaign не запускается автоматически после настройки environment. Для нее требуется отдельное подтверждение.

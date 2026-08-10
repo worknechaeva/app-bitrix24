@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`. Production OAuth routes пока не используют persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`, а также законченный локальный production OAuth authentication contour. Remote Supabase schema, deployment и live portal не изменялись; production business data и live task creation еще не подключены.
 
 ## Формат продукта и портал
 
@@ -33,16 +33,19 @@
 - Persistent OAuth transaction создается server-only из 32 случайных байтов, кодированных `base64url`; в repository и БД передается только полный lowercase SHA-256 hash. Database time задает TTL ровно 10 минут.
 - `return_path` канонизируется как root-relative внутренний путь; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители отклоняются.
 - Consumption выполняется одной атомарной PostgreSQL RPC. Неизвестный, просроченный и уже использованный state возвращают отдельные outcomes без `return_path`; при конкурентных callback только один получает `consumed`.
-- Persistent OAuth transaction foundation пока не подключен к production OAuth start/callback routes.
+- Production OAuth start использует persistent OAuth transaction; callback атомарно consuming state до обработки provider error/code и продолжает flow только для outcome `consumed`.
 - Persistent app session foundation создает server-only token из 32 случайных байтов в `base64url`, передает в repository и БД только полный lowercase SHA-256 hash и использует database time для абсолютного TTL ровно 30 дней. Sliding expiration отсутствует, обычный resolve не изменяет expiry.
 - Session создается только для текущего active profile с допустимыми Bitrix snapshots. Resolve возвращает минимальный server-side actor context с актуальной ролью из profile; unknown, expired, revoked и profile inactive не раскрывают actor identity. Отзыв одной session атомарно устанавливает `revoked_at` один раз.
-- Persistent app session foundation пока не подключен к production OAuth callback, не устанавливает browser cookie и не является готовой production authentication.
+- Production callback выполняет rotation текущей browser session, создает новую persistent app session и устанавливает только opaque token в `__Host-task-launcher-session` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`; expiry cookie равен database expiry session.
 - Persistent credentials foundation хранит по одной credentials row на profile/portal и принимает в repository и PostgreSQL только отдельно зашифрованные access/refresh envelopes. Server-only service использует AES-256-GCM, отдельный случайный 12-byte IV для каждого token и authenticated AAD с marker, portal, profile, token kind и `token_version`.
 - `BITRIX24_CREDENTIALS_ENCRYPTION_KEY` декодируется только как base64 ровно в 32 bytes, не имеет default и лениво проверяется при создании credentials service. Ключ находится вне БД; missing или invalid configuration fail closed без раскрытия значения.
 - Initial create разрешен только для актуального active employee profile, создает `status=active` и `token_version=1` и не перезаписывает существующую row. Resolve возвращает encrypted fields repository только для active credentials; service расшифровывает их только в server memory.
 - Refresh rotation одной PostgreSQL RPC атомарно заменяет обе encrypted token части, использует AAD следующего token version и optimistic check `expected_token_version`. Конкурентно побеждает одна целостная pair, остальные получают `version_conflict`.
 - Атомарный переход в `reauth_required` также требует expected version, поэтому stale provider failure старой pair не может заблокировать уже обновленные credentials. `disabled` остается отдельным fail-closed состоянием без general-purpose enable/disable operation; recovery/reactivation flow не реализован.
-- Persistent credentials foundation пока не подключен к production OAuth callback и не вызывает provider refresh endpoint.
+- Production callback сохраняет полученную после code exchange pair через отдельный verified OAuth create/replacement flow. Replacement получает только version context без ciphertext, шифрует pair с AAD следующего `token_version` и атомарно создает или заменяет всю pair с optimistic check. `reauth_required` возвращается в `active` только этим verified flow; `disabled` автоматически не реактивируется.
+- Production callback не выполняет immediate provider refresh. Automatic provider refresh orchestration остается будущей задачей.
+- Live `Bitrix24IdentityClient` использует официальный token endpoint, фиксированные OAuth semantics `app`/`user_brief`, проверяет trusted `member_id`, canonical HTTPS client endpoint, current user и admission active employee до любой profile/session/credentials persistence.
+- Logout отзывает текущую persistent session, всегда очищает browser cookie и возвращает на `/login`; storage failure не оставляет browser в визуально authenticated состоянии.
 
 Первый administrator задается через server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Роль назначается только после успешного OAuth-входа и проверки `member_id`, `ACTIVE=true` и `USER_TYPE=employee`. Bootstrap выполняется один раз, фиксируется в `admin_bootstrapped_at`, после проверки переменная удаляется из environment. Аварийное восстановление будет отдельной будущей server-only процедурой; персональный Bitrix user ID не хранится в документации или Git.
 
@@ -191,13 +194,15 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
 
-Для реализованных `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth routes.
+Для реализованных `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Production OAuth routes локально связаны с этими repositories. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе.
 
 ## Technical spikes Milestone 2
 
-Завершенный development/test spike подтвердил OAuth отдельного PWA, проверку `member_id` и portal identity, token scope `app`, фактическое application permission `user_brief` через REST-метод `scope`, active employee admission, refresh token rotation и неизменность provider identity после refresh. Реализованный отдельно persistent credentials foundation не подключен к spike или production callback; вместе они все еще не являются production authentication.
+Завершенный development/test spike подтвердил OAuth отдельного PWA, проверку `member_id` и portal identity, token scope `app`, фактическое application permission `user_brief` через REST-метод `scope`, active employee admission, refresh token rotation и неизменность provider identity после refresh. Проверенные provider primitives промотированы в отдельный live IdentityClient, а production routes используют persistent state, portal/profile reconciliation, encrypted credential replacement и app sessions. Spike остается отдельным development/test diagnostic harness.
 
 В spike callback контролируемые ошибки проверки request, state, portal identity и OAuth metadata возвращают безопасный HTTP 400; admission rejection остается HTTP 403. Ошибки Bitrix24 provider и token exchange сохраняют HTTP 502, а неожиданные внутренние ошибки — HTTP 500. Response содержит только безопасный reason code и не меняет границы production OAuth.
+
+В `APP_RUNTIME_MODE=live` защищенный UI разрешает actor только через persistent app session. Пока launcher projects, Directory и submissions не подключены к persistent business layer, authenticated пользователь видит безопасный milestone placeholder и logout, но не mock projects, employees, tasks или submissions. Mock auth и mock business UI остаются только development/test `mock` mode; прямые mock server actions в live mode fail closed.
 
 Будущими остаются два directory spike, которые выполняются только после отдельного подтверждения:
 
