@@ -64,12 +64,12 @@ Migration каждого подсистемного этапа создаетс�
 
 ### 5. Sessions и encrypted credentials
 
-- собственные Postgres-backed `app_sessions`;
+- собственные Postgres-backed `app_sessions` с hash-only opaque token, database-time absolute TTL 30 дней, create/resolve/revoke RPC, актуальным actor context, RLS/grants и concurrency coverage — foundation реализован локально без production OAuth/cookie integration или удаленной schema;
 - `oauth_transactions` с hash одноразового state, database-time TTL 10 минут, safe `return_path`, атомарным consumption, RLS/grants и server-only adapter — foundation реализован локально без подключения к production OAuth routes или удаленной schema;
 - `bitrix24_user_credentials` отдельно от profiles;
 - encryption key вне БД;
 - атомарная rotation access/refresh token pair с `token_version`;
-- logout, revocation, cleanup и `reauth_required`.
+- revocation одной session реализована как foundation; logout, revoke-all при блокировке profile, cleanup и `reauth_required` остаются будущими задачами.
 
 ### 6. Directory clients
 
@@ -92,8 +92,8 @@ Migration каждого подсистемного этапа создаетс�
 
 - app session и server-only DAL как источник actor identity;
 - actor-aware repositories;
-- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations` и `profiles`, остальные таблицы остаются будущими;
-- service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations` и `profiles`;
+- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions`, остальные таблицы остаются будущими;
+- service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions`;
 - транзакционные RPC для ролей, sessions, archive/restore и token rotation;
 - adversarial regression-тесты доступа.
 

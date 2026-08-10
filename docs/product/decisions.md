@@ -321,3 +321,13 @@
 - **Последствия:** Raw state не хранится, не логируется и не входит в storage errors. Только первый допустимый consumer получает `return_path`; external и protocol-relative redirects, backslash, control characters и опасные percent-encoded разделители запрещены application и database checks. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute узкой RPC. Slice не подключен к production OAuth routes и не применен к удаленной Supabase schema.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-033 — Persistent app sessions foundation
+
+- **Дата:** 2026-08-10
+- **Статус:** Active
+- **Контекст:** Будущий production OAuth flow требует собственной server-side identity без Supabase Auth/JWT и без передачи profile, role или OAuth credentials браузеру.
+- **Решение:** Server-only session service генерирует 32 случайных байта в `base64url`, вычисляет полный lowercase SHA-256 hash и передает repository и PostgreSQL только hash. `app_sessions` связывает session с profile и portal composite foreign key; узкие `SECURITY INVOKER` RPC создают session только для текущего active employee profile, разрешают hash в минимальный actor context с актуальной ролью из `profiles` и атомарно устанавливают `revoked_at`. Database time задает абсолютный TTL ровно 30 дней; sliding expiration отсутствует, caller не выбирает TTL, обычный resolve не продлевает expiry.
+- **Последствия:** Raw token не хранится, не логируется и не входит в storage errors. Unknown, expired, revoked и profile inactive outcomes не раскрывают actor identity; inactive profile и недопустимые Bitrix snapshots fail closed. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute трех session RPC. Foundation хранится в Postgres без Redis/KV, но еще не подключен к production OAuth callback, session rotation, browser cookie или logout и не является готовой production authentication.
+- **Связанные QA-записи:** —
+- **Заменяет:** —

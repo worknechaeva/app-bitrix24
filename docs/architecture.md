@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles`/`oauth_transactions` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth routes пока не используют repositories, удаленная Supabase schema не изменена, а live directory не подключен.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth routes пока не используют repositories, удаленная Supabase schema не изменена, а live directory не подключен.
 
 ## Приложение
 
@@ -47,12 +47,17 @@ UI
 - После успешного OAuth callback сервер выполняет session rotation и создает новую собственную app session.
 - Браузер хранит только случайный непрозрачный session token в cookie с production-флагами `HttpOnly`, `Secure` и `SameSite=Lax`; token недоступен JavaScript.
 - Cookie не содержит profile ID, Bitrix user ID, OAuth token или роль. Сырой session token не хранится в БД; в `app_sessions` находится только его криптографический hash.
+- App session service генерирует 32 случайных байта через Node.js crypto и кодирует их в `base64url` без padding. За repository boundary передается только полный lowercase SHA-256 hash.
+- `app_sessions` имеет абсолютный database-time TTL ровно 30 дней. Caller не передает TTL, sliding expiration отсутствует, resolve не изменяет `created_at` или `expires_at`.
+- Атомарная create RPC блокирует связанный profile и выдает session только при `is_active=true`, `bitrix_active=true`, `bitrix_user_type='employee'`. Composite foreign key `(profile_id, portal_installation_id)` блокирует cross-portal identity.
+- Resolve возвращает только session/profile/portal IDs, актуальную роль из `profiles` и expiry для active session. Unknown, expired, revoked и profile inactive не раскрывают actor identity; роль не хранится snapshot в session.
+- Revoke использует row lock и database time: только первый конкурентный вызов устанавливает `revoked_at`, повторные вызовы не меняют timestamp, expired session не получает новую state transition.
 - Logout устанавливает `revoked_at`; блокировка profile отзывает все его app sessions.
 - Истекшие и отозванные сессии очищаются технической процедурой.
 - Persistent OAuth `state` создается server-only из 32 криптографически случайных байтов в `base64url`; repository принимает только полный lowercase SHA-256 hash, а raw state не хранится, не логируется и не входит в ошибки.
 - `oauth_transactions` использует database time и TTL ровно 10 минут. Узкая `SECURITY INVOKER` RPC блокирует строку и атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`; только `consumed` содержит безопасный `return_path`.
 - `return_path` проходит application canonicalization относительно фиксированного sentinel origin и database constraint; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители запрещены.
-- Persistent foundation пока не подключен к production OAuth callback; существующий development/test spike продолжает использовать отдельный ephemeral state store.
+- Persistent OAuth transaction и app session foundations пока не подключены к production OAuth callback; browser cookie не устанавливается, а существующий development/test spike продолжает использовать отдельный ephemeral state store.
 - Для Milestone 2 app sessions и OAuth transactions хранятся в Postgres; Redis/KV не добавляется без подтвержденной необходимости.
 
 ## Profiles и роли
@@ -80,7 +85,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Privileged gateway реализован для узких операций `portal_installations`, `profiles` и `oauth_transactions`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Privileged gateway реализован для узких операций `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 ### Server repositories
 
