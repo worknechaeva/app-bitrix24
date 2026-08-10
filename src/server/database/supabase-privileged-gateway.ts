@@ -31,6 +31,28 @@ export type ProfileRpcResponse = {
 
 export type ProfileRpcTransport = (arguments_: ProfileRpcArguments) => Promise<ProfileRpcResponse>;
 
+export type OAuthTransactionCreateArguments = {
+  state_hash: string;
+  return_path: string;
+};
+
+export type OAuthTransactionConsumeArguments = {
+  p_state_hash: string;
+};
+
+export type OAuthTransactionResponse = {
+  data: unknown;
+  error: unknown;
+};
+
+export type OAuthTransactionCreateTransport = (
+  arguments_: OAuthTransactionCreateArguments,
+) => Promise<OAuthTransactionResponse>;
+
+export type OAuthTransactionConsumeTransport = (
+  arguments_: OAuthTransactionConsumeArguments,
+) => Promise<OAuthTransactionResponse>;
+
 function createPrivilegedClient() {
   const configuration = getSupabasePrivilegedConfiguration();
   return createClient(configuration.url, configuration.serviceRoleKey, {
@@ -48,4 +70,16 @@ export const reconcilePortalInstallationRpc: PortalInstallationRpcTransport = as
 
 export const reconcileProfileRpc: ProfileRpcTransport = async (arguments_) => {
   return createPrivilegedClient().rpc("reconcile_profile", arguments_);
+};
+
+export const createOAuthTransactionRow: OAuthTransactionCreateTransport = async (arguments_) => {
+  return createPrivilegedClient()
+    .from("oauth_transactions")
+    .insert(arguments_)
+    .select("id,return_path,created_at,expires_at")
+    .single();
+};
+
+export const consumeOAuthTransactionRpc: OAuthTransactionConsumeTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("consume_oauth_transaction", arguments_);
 };

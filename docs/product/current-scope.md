@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations` и `profiles`. Production OAuth callback пока не использует persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, локальная server-only конфигурация identity единственного портала и persistent storage slices для `portal_installations`, `profiles` и `oauth_transactions`. Production OAuth routes пока не используют persistent repositories; остальная описанная ниже production-интеграция остается целевым scope.
 
 ## Формат продукта и портал
 
@@ -30,6 +30,10 @@
 - Session token недоступен JavaScript. Cookie не содержит profile ID, Bitrix user ID, OAuth token или роль; сырой token не хранится в БД.
 - OAuth access token, refresh token, client secret и database credentials остаются server-only и не попадают во frontend, пользовательские ошибки или логи.
 - Supabase Custom OAuth Provider и собственный JWT для Supabase не входят в Milestone 2.
+- Persistent OAuth transaction создается server-only из 32 случайных байтов, кодированных `base64url`; в repository и БД передается только полный lowercase SHA-256 hash. Database time задает TTL ровно 10 минут.
+- `return_path` канонизируется как root-relative внутренний путь; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители отклоняются.
+- Consumption выполняется одной атомарной PostgreSQL RPC. Неизвестный, просроченный и уже использованный state возвращают отдельные outcomes без `return_path`; при конкурентных callback только один получает `consumed`.
+- Persistent OAuth transaction foundation пока не подключен к production OAuth start/callback routes.
 
 Первый administrator задается через server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Роль назначается только после успешного OAuth-входа и проверки `member_id`, `ACTIVE=true` и `USER_TYPE=employee`. Bootstrap выполняется один раз, фиксируется в `admin_bootstrapped_at`, после проверки переменная удаляется из environment. Аварийное восстановление будет отдельной будущей server-only процедурой; персональный Bitrix user ID не хранится в документации или Git.
 
@@ -178,7 +182,7 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
 
-Для реализованных `portal_installations` и `profiles` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и reconciliation RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth callback.
+Для реализованных `portal_installations`, `profiles` и `oauth_transactions` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе, а repositories не подключены к production OAuth routes.
 
 ## Technical spikes Milestone 2
 

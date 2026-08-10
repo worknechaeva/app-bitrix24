@@ -65,7 +65,7 @@ Migration каждого подсистемного этапа создаетс�
 ### 5. Sessions и encrypted credentials
 
 - собственные Postgres-backed `app_sessions`;
-- `oauth_transactions` с hash одноразового state;
+- `oauth_transactions` с hash одноразового state, database-time TTL 10 минут, safe `return_path`, атомарным consumption, RLS/grants и server-only adapter — foundation реализован локально без подключения к production OAuth routes или удаленной schema;
 - `bitrix24_user_credentials` отдельно от profiles;
 - encryption key вне БД;
 - атомарная rotation access/refresh token pair с `token_version`;
