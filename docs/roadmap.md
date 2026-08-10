@@ -49,7 +49,7 @@ Migration каждого подсистемного этапа создаетс�
 
 - server-only конфигурация одного portal `member_id` и canonical origin на deployment — реализована локально;
 - storage-independent контракт и политика reconciliation одной portal installation — реализованы;
-- `portal_installations`, singleton migration, атомарная PostgreSQL RPC и server-only Supabase adapter — реализованы локально без подключения к production OAuth callback или удаленной schema;
+- `portal_installations`, singleton migration, атомарная PostgreSQL RPC и server-only Supabase adapter — реализованы и подключены к локальному production OAuth callback без изменения удаленной schema;
 - проверка OAuth callback, state, domain и portal mismatch;
 - запрет выбора портала пользователем.
 
@@ -57,20 +57,22 @@ Migration каждого подсистемного этапа создаетс�
 
 - profiles без обязательной зависимости от `auth.users`, UUID и unique portal/user identity — foundation реализован локально;
 - атомарная reconciliation проверенного active employee с ролью нового profile `editor`, безопасными snapshots и сохранением `role`/`is_active` — реализована локально;
-- RLS, grants, pgTAP, database integration и concurrency coverage для profiles — реализованы без подключения к production OAuth callback или удаленной schema;
+- RLS, grants, pgTAP, database integration и concurrency coverage для profiles — реализованы и подключены к локальному production OAuth callback без изменения удаленной schema;
 - первый administrator через `BOOTSTRAP_ADMIN_BITRIX_USER_ID` — будущая задача;
 - управление ролями, защита последнего active administrator и административная блокировка — будущие задачи;
 - sessions/credentials enforcement для inactive profile и recovery/reactivation flow — будущие задачи.
 
 ### 5. Sessions и encrypted credentials
 
-- собственные Postgres-backed `app_sessions` с hash-only opaque token, database-time absolute TTL 30 дней, create/resolve/revoke RPC, актуальным actor context, RLS/grants и concurrency coverage — foundation реализован локально без production OAuth/cookie integration или удаленной schema;
-- `oauth_transactions` с hash одноразового state, database-time TTL 10 минут, safe `return_path`, атомарным consumption, RLS/grants и server-only adapter — foundation реализован локально без подключения к production OAuth routes или удаленной schema;
+- собственные Postgres-backed `app_sessions` с hash-only opaque token, database-time absolute TTL 30 дней, create/resolve/revoke RPC, актуальным actor context, RLS/grants и concurrency coverage — подключены к локальному production OAuth callback, secure cookie, actor facade и logout без изменения удаленной schema;
+- `oauth_transactions` с hash одноразового state, database-time TTL 10 минут, safe `return_path`, атомарным consumption, RLS/grants и server-only adapter — подключены к локальным production OAuth routes без изменения удаленной schema;
 - `bitrix24_user_credentials` отдельно от profiles, encrypted-only repository boundary и server-only AES-256-GCM service — foundation реализован локально;
 - 32-byte base64 environment encryption key вне БД, отдельные random IV и authenticated AAD identity/kind/version — реализованы без production secret;
 - initial create, active resolve, атомарная rotation access/refresh token pair с `token_version`, отдельные `reauth_required`/`disabled` outcomes и защита stale refresh failure — реализованы локально с pgTAP и PostgreSQL concurrency coverage;
-- credentials foundation не подключен к production OAuth callback или реальному provider refresh и не применен к удаленной schema;
-- revocation одной session реализована как foundation; logout, revoke-all при блокировке profile, cleanup и recovery/reactivation credentials остаются будущими задачами.
+- credentials foundation подключен к production OAuth callback через отдельные version-safe verified OAuth inspection/replacement RPC; реальный automatic provider refresh и удаленная schema не подключены;
+- live `Bitrix24IdentityClient`, production OAuth start/callback/install receipt, проверка `app`/`user_brief`, portal/profile reconciliation, session rotation и secure cookie — реализованы локально;
+- live protected runtime показывает fail-closed placeholder до подключения persistent launcher projects/Directory/submissions и не отображает mock business data;
+- revocation одной session и browser logout реализованы; revoke-all при блокировке profile, cleanup и recovery/reactivation credentials остаются будущими задачами.
 
 ### 6. Directory clients
 

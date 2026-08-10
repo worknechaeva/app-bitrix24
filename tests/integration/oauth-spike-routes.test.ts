@@ -864,18 +864,20 @@ describe("OAuth spike route handlers", () => {
         new Request("https://harness.example/api/bitrix24/oauth/install", { method: "POST" }),
       ).then((response) => response.status),
     ]);
-    expect(productionStatuses).toEqual([404, 404, 404]);
+    expect(productionStatuses).toEqual([500, 500, 500]);
 
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("BITRIX24_OAUTH_SPIKE_ENABLED", "false");
     expect(
-      startRoute(
-        new Request("https://harness.example/api/bitrix24/oauth/start?BITRIX24_OAUTH_SPIKE_ENABLED=true", {
-          headers: {
-            Cookie: "BITRIX24_OAUTH_SPIKE_ENABLED=true",
-            "X-Bitrix24-OAuth-Spike-Enabled": "true",
-          },
-        }),
+      (
+        await startRoute(
+          new Request("https://harness.example/api/bitrix24/oauth/start?BITRIX24_OAUTH_SPIKE_ENABLED=true", {
+            headers: {
+              Cookie: "BITRIX24_OAUTH_SPIKE_ENABLED=true",
+              "X-Bitrix24-OAuth-Spike-Enabled": "true",
+            },
+          }),
+        )
       ).status,
     ).toBe(404);
     expect(

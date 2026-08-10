@@ -34,7 +34,7 @@ describe("Bitrix24 portal identity", () => {
     "https://portal.example:8443/rest/",
   ])("rejects an unsafe or malformed client endpoint: %s", (clientEndpoint) => {
     expect(() => canonicalPortalOriginFromClientEndpoint(clientEndpoint)).toThrowError(
-      expect.objectContaining({ reasonCode: "invalid_client_endpoint" }),
+      expect.objectContaining({ code: "invalid_bitrix24_portal_origin" }),
     );
   });
 

@@ -12,6 +12,7 @@ export type Bitrix24OAuthResult = Bitrix24OAuthTokenPair & {
   expiresIn?: number;
   scope: string[];
   userId?: string;
+  accessTokenExpiresAt?: string | null;
 };
 
 export type Bitrix24CurrentUser = {

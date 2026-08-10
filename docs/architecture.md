@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth routes пока не используют repositories, удаленная Supabase schema не изменена, а live directory не подключен.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient и локальный production OAuth authentication contour поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices. Remote Supabase schema и deployment не изменялись; live directory и persistent business data не подключены.
 
 ## Приложение
 
@@ -57,7 +57,9 @@ UI
 - Persistent OAuth `state` создается server-only из 32 криптографически случайных байтов в `base64url`; repository принимает только полный lowercase SHA-256 hash, а raw state не хранится, не логируется и не входит в ошибки.
 - `oauth_transactions` использует database time и TTL ровно 10 минут. Узкая `SECURITY INVOKER` RPC блокирует строку и атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`; только `consumed` содержит безопасный `return_path`.
 - `return_path` проходит application canonicalization относительно фиксированного sentinel origin и database constraint; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители запрещены.
-- Persistent OAuth transaction и app session foundations пока не подключены к production OAuth callback; browser cookie не устанавливается, а существующий development/test spike продолжает использовать отдельный ephemeral state store.
+- Production OAuth start/callback использует persistent OAuth transaction; state consumed до provider error/code. Callback выполняет credential persistence, revoke предыдущей browser session и issuance новой session, затем устанавливает `__Host-task-launcher-session` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`.
+- Live actor facade разрешает profile/portal/role только из `AppSessionService.resolve`. Неактивные, unknown, expired и revoked sessions считаются unauthenticated. Logout идемпотентно отзывает session и всегда очищает cookie.
+- Development/test spike продолжает использовать отдельный ephemeral state store только при явном spike flag; production runtime не импортирует spike state/runtime.
 - Для Milestone 2 app sessions и OAuth transactions хранятся в Postgres; Redis/KV не добавляется без подтвержденной необходимости.
 
 ## Profiles и роли
@@ -85,7 +87,7 @@ UI
 - Resolve repository возвращает encrypted envelopes только для актуального active profile и credentials status `active`; service расшифровывает pair только в server memory. `profile_inactive`, `reauth_required` и `disabled` не раскрывают encrypted fields и fail closed.
 - Rotation блокирует credentials row и profile и одной RPC заменяет всю encrypted pair, endpoint и expiry только при совпадении `expected_token_version`; новый ciphertext использует AAD следующей версии. Version conflict ничего не изменяет.
 - `mark_bitrix24_credentials_reauth_required` требует ту же optimistic version. Stale refresh failure старой версии после успешной rotation получает `version_conflict` и не блокирует новую pair. `disabled` не реактивируется; general-purpose disable/enable и re-auth recovery отсутствуют.
-- Foundation не подключен к production OAuth callback или provider refresh orchestration, не создает browser API и не меняет удаленную Supabase schema.
+- Production callback использует отдельные inspection/replacement RPC для verified OAuth login. Inspection возвращает только current/next version context; replacement атомарно создает version 1 или заменяет полную encrypted pair на `N+1`, включая переход `reauth_required -> active`. `disabled` не реактивируется. Provider refresh orchestration и удаленная Supabase schema не изменены.
 
 ## Supabase, grants и authorization
 
@@ -99,6 +101,8 @@ UI
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
 Privileged gateway реализован для узких операций `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+
+Live authentication configuration (`TASK_LAUNCHER_APP_ORIGIN`, OAuth client credentials, portal identity, credentials encryption key и Supabase privileged configuration) разрешается лениво только на runtime boundaries. Callback URI вычисляется из app origin, OAuth token endpoint не переопределяется environment. Production build не требует runtime secrets; фактический live request без valid configuration завершается fail closed.
 
 ### Server repositories
 

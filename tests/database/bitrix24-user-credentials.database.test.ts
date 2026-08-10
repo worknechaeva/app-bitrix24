@@ -468,6 +468,177 @@ describe.sequential("bitrix24_user_credentials database foundation", () => {
     ).resolves.toEqual({ outcome: "disabled" });
   });
 
+  it("creates, replaces, and reactivates reauth_required only through verified OAuth replacement", async () => {
+    const profile = await createProfile("8113");
+    await expect(
+      credentialService.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId: profile.id,
+        accessToken: "oauth-initial-access",
+        refreshToken: "oauth-initial-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "created", tokenVersion: 1 });
+    await expect(
+      credentialService.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId: profile.id,
+        accessToken: "oauth-repeated-access",
+        refreshToken: "oauth-repeated-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "replaced", tokenVersion: 2 });
+    await credentialService.markReauthRequired({
+      portalInstallationId: 1,
+      profileId: profile.id,
+      expectedTokenVersion: 2,
+    });
+    await expect(
+      credentialService.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId: profile.id,
+        accessToken: "oauth-reauth-access",
+        refreshToken: "oauth-reauth-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "replaced", tokenVersion: 3 });
+    await expect(
+      credentialService.resolve({ portalInstallationId: 1, profileId: profile.id }),
+    ).resolves.toMatchObject({
+      outcome: "active",
+      accessToken: "oauth-reauth-access",
+      refreshToken: "oauth-reauth-refresh",
+      tokenVersion: 3,
+    });
+    const { data: stored } = await serviceClient
+      .from("bitrix24_user_credentials")
+      .select("status,reauth_required_at")
+      .eq("profile_id", profile.id)
+      .single();
+    expect(stored).toEqual({ status: "active", reauth_required_at: null });
+  });
+
+  it("keeps disabled and inactive profiles fail closed for verified OAuth replacement", async () => {
+    const disabled = await createProfile("8114");
+    await credentialService.createInitial({
+      portalInstallationId: 1,
+      profileId: disabled.id,
+      accessToken: "disabled-old-access",
+      refreshToken: "disabled-old-refresh",
+      clientEndpoint: endpoint,
+    });
+    await setCredentialStatus(disabled.id, "disabled");
+    await expect(
+      credentialService.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId: disabled.id,
+        accessToken: "disabled-new-access",
+        refreshToken: "disabled-new-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "disabled" });
+
+    const inactive = await createProfile("8115");
+    await setProfileInactive(inactive.id);
+    await expect(
+      credentialService.replaceAfterVerifiedOAuth({
+        portalInstallationId: 1,
+        profileId: inactive.id,
+        accessToken: "inactive-new-access",
+        refreshToken: "inactive-new-refresh",
+        clientEndpoint: endpoint,
+      }),
+    ).resolves.toEqual({ outcome: "profile_inactive" });
+  });
+
+  it("allows one of sixteen concurrent verified OAuth replacements and keeps one intact pair", async () => {
+    const profile = await createProfile("8116");
+    await credentialService.createInitial({
+      portalInstallationId: 1,
+      profileId: profile.id,
+      accessToken: "verified-race-old-access",
+      refreshToken: "verified-race-old-refresh",
+      clientEndpoint: endpoint,
+    });
+    const candidates = Array.from({ length: 16 }, (_, index) => ({
+      accessToken: `verified-${index}-access`,
+      refreshToken: `verified-${index}-refresh`,
+    }));
+    const results = await Promise.all(
+      candidates.map((candidate) => {
+        const encrypted = crypto.encryptTokenPair({
+          ...candidate,
+          portalInstallationId: 1,
+          profileId: profile.id,
+          tokenVersion: 2,
+        });
+        return credentialRepository.replaceAfterVerifiedOAuth({
+          portalInstallationId: 1,
+          profileId: profile.id,
+          expectedCurrentTokenVersion: 1,
+          newTokenVersion: 2,
+          ...encrypted,
+          encryptionVersion: 1,
+          clientEndpoint: endpoint,
+          accessTokenExpiresAt: null,
+        });
+      }),
+    );
+    expect(results.filter((result) => result.outcome === "replaced")).toHaveLength(1);
+    expect(results.filter((result) => result.outcome === "version_conflict")).toHaveLength(15);
+    const resolved = await credentialService.resolve({ portalInstallationId: 1, profileId: profile.id });
+    expect(resolved.outcome).toBe("active");
+    if (resolved.outcome !== "active") throw new Error("Expected active credentials");
+    expect(resolved.tokenVersion).toBe(2);
+    expect(candidates).toContainEqual({
+      accessToken: resolved.accessToken,
+      refreshToken: resolved.refreshToken,
+    });
+  });
+
+  it("creates one row during concurrent initial verified OAuth replacement", async () => {
+    const profile = await createProfile("8117");
+    const candidates = Array.from({ length: 16 }, (_, index) => ({
+      accessToken: `initial-${index}-access`,
+      refreshToken: `initial-${index}-refresh`,
+    }));
+    const results = await Promise.all(
+      candidates.map((candidate) => {
+        const encrypted = crypto.encryptTokenPair({
+          ...candidate,
+          portalInstallationId: 1,
+          profileId: profile.id,
+          tokenVersion: 1,
+        });
+        return credentialRepository.replaceAfterVerifiedOAuth({
+          portalInstallationId: 1,
+          profileId: profile.id,
+          expectedCurrentTokenVersion: null,
+          newTokenVersion: 1,
+          ...encrypted,
+          encryptionVersion: 1,
+          clientEndpoint: endpoint,
+          accessTokenExpiresAt: null,
+        });
+      }),
+    );
+    expect(results.filter((result) => result.outcome === "created")).toHaveLength(1);
+    expect(results.filter((result) => result.outcome === "version_conflict")).toHaveLength(15);
+    const { count } = await serviceClient
+      .from("bitrix24_user_credentials")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profile.id);
+    expect(count).toBe(1);
+    const resolved = await credentialService.resolve({ portalInstallationId: 1, profileId: profile.id });
+    expect(resolved.outcome).toBe("active");
+    if (resolved.outcome !== "active") throw new Error("Expected active credentials");
+    expect(resolved.tokenVersion).toBe(1);
+    expect(candidates).toContainEqual({
+      accessToken: resolved.accessToken,
+      refreshToken: resolved.refreshToken,
+    });
+  });
+
   it("denies browser table and credential RPC access", async () => {
     const { error: tableError } = await anonClient.from("bitrix24_user_credentials").select("id");
     expect(tableError?.code).toBe("42501");
@@ -482,5 +653,10 @@ describe.sequential("bitrix24_user_credentials database foundation", () => {
       p_expected_token_version: 1,
     });
     expect(reauthError).not.toBeNull();
+    const { error: inspectError } = await anonClient.rpc("inspect_bitrix24_credentials_for_verified_oauth", {
+      p_portal_installation_id: 1,
+      p_profile_id: "218f47a7-7c60-7a31-8f6a-27f4bb596f5a",
+    });
+    expect(inspectError).not.toBeNull();
   });
 });

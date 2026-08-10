@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DesktopNavigation, MobileNavigation } from "./navigation";
 import { MobileUserMenu } from "./mobile-user-menu";
-import { logoutMock } from "@/server/auth/mock-session";
+import { logoutApplicationSession, type ApplicationSession } from "@/server/auth/application-session";
 
 type AppShellProps = {
-  user: { name: string; role: "admin" | "editor" };
+  user: ApplicationSession;
   children: React.ReactNode;
 };
 
@@ -29,10 +29,10 @@ export function AppShell({ user, children }: AppShellProps) {
           <div className="bg-muted rounded-2xl p-3">
             <div className="truncate text-sm font-medium">{user.name}</div>
             <Badge variant="outline" className="mt-1">
-              {user.role === "admin" ? "Администратор" : "Редактор"}
+              {user.role === "administrator" ? "Администратор" : "Редактор"}
             </Badge>
           </div>
-          <form action={logoutMock}>
+          <form action={logoutApplicationSession}>
             <Button variant="ghost" className="w-full justify-start" type="submit">
               <LogOut aria-hidden="true" className="size-4" />
               Выйти
@@ -48,7 +48,7 @@ export function AppShell({ user, children }: AppShellProps) {
           </span>
           Task Launcher
         </Link>
-        <MobileUserMenu user={user} logoutAction={logoutMock} />
+        <MobileUserMenu user={user} logoutAction={logoutApplicationSession} />
       </header>
 
       <main className="mx-auto min-h-svh max-w-6xl px-4 py-6 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:ml-64 md:px-8 md:py-10 md:pb-10">

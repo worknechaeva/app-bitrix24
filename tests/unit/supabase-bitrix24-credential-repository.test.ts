@@ -67,6 +67,66 @@ function inactiveRow(outcome: "unknown" | "profile_inactive" | "reauth_required"
 }
 
 describe("Supabase Bitrix24 credential repository", () => {
+  it("maps safe version-only verified OAuth context and never accepts encrypted payload from inspection", async () => {
+    const inspect = vi.fn().mockResolvedValue({
+      data: [{ outcome: "replaceable", current_token_version: 4, next_token_version: 5 }],
+      error: null,
+    });
+    const repository = new SupabaseBitrix24CredentialRepository(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      inspect,
+      vi.fn(),
+    );
+    await expect(repository.inspectForVerifiedOAuth({ portalInstallationId: 1, profileId })).resolves.toEqual(
+      {
+        outcome: "replaceable",
+        currentTokenVersion: 4,
+        nextTokenVersion: 5,
+      },
+    );
+    expect(inspect).toHaveBeenCalledExactlyOnceWith({ p_portal_installation_id: 1, p_profile_id: profileId });
+  });
+
+  it("sends one complete encrypted pair to the narrow verified OAuth replacement RPC", async () => {
+    const replace = vi.fn().mockResolvedValue({
+      data: [{ outcome: "replaced", token_version: 2 }],
+      error: null,
+    });
+    const repository = new SupabaseBitrix24CredentialRepository(
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      vi.fn(),
+      replace,
+    );
+    await expect(
+      repository.replaceAfterVerifiedOAuth({
+        ...input,
+        expectedCurrentTokenVersion: 1,
+        newTokenVersion: 2,
+      }),
+    ).resolves.toEqual({ outcome: "replaced", tokenVersion: 2 });
+    expect(replace).toHaveBeenCalledWith({
+      p_portal_installation_id: 1,
+      p_profile_id: profileId,
+      p_expected_current_token_version: 1,
+      p_new_token_version: 2,
+      p_access_token_ciphertext: access.ciphertext,
+      p_access_token_iv: access.iv,
+      p_access_token_auth_tag: access.authTag,
+      p_refresh_token_ciphertext: refresh.ciphertext,
+      p_refresh_token_iv: refresh.iv,
+      p_refresh_token_auth_tag: refresh.authTag,
+      p_encryption_version: 1,
+      p_client_endpoint: input.clientEndpoint,
+      p_access_token_expires_at: null,
+    });
+  });
+
   it("creates only through the narrow encrypted RPC and maps the returned row", async () => {
     const create = vi.fn().mockResolvedValue({ data: [{ ...activeRow, outcome: "created" }], error: null });
     const repository = new SupabaseBitrix24CredentialRepository(create, vi.fn(), vi.fn(), vi.fn());

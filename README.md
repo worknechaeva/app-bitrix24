@@ -1,6 +1,6 @@
 # Task Launcher
 
-Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Первые implementation slices Milestone 2 разделяют server-only контракты интеграции, гарантируют production fail-closed для создания задач и задают storage-independent reconciliation contract для одной portal installation. Development/test spike OAuth и portal identity завершен; production OAuth, Supabase Postgres foundation, live-справочники и постоянное хранение еще не реализованы.
+Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Milestone 2 добавил persistent Supabase foundations и локальный production OAuth authentication contour с encrypted credentials и opaque app sessions. Live-справочники, persistent business data, remote schema и deployment еще не подключены.
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
@@ -47,7 +47,7 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-Откройте [http://localhost:3000/login](http://localhost:3000/login) и выберите одну из mock-персон. Это development-only сценарий реализованного первого milestone; production OAuth Milestone 2 еще не подключен.
+В `APP_RUNTIME_MODE=mock` откройте [http://localhost:3000/login](http://localhost:3000/login) и выберите одну из mock-персон. Это development/test-only сценарий. В live mode страница предлагает вход через Bitrix24; runtime secrets разрешаются лениво и не нужны для build.
 
 В форме новой задачи доступны фиктивные проекты «Технарост» и «Форма». Раскройте блок «Дополнительные параметры», чтобы выбрать проверочный сценарий:
 
@@ -103,14 +103,20 @@ APP_RUNTIME_MODE=mock
 BITRIX24_MODE=mock
 BITRIX24_PORTAL_MEMBER_ID=
 BITRIX24_PORTAL_ORIGIN=
+TASK_LAUNCHER_APP_ORIGIN=
+BITRIX24_OAUTH_CLIENT_ID=
+BITRIX24_OAUTH_CLIENT_SECRET=
+BITRIX24_CREDENTIALS_ENCRYPTION_KEY=
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 Не добавляйте OAuth tokens, client secret, encryption key или service-role credentials в Git, browser-visible переменные, fixtures и логи. Переменные будущей live-интеграции не должны иметь префикс `NEXT_PUBLIC_`.
 
 `BITRIX24_PORTAL_MEMBER_ID` и `BITRIX24_PORTAL_ORIGIN` задают server-only identity единственного портала deployment. До подключения portal installation обе переменные могут быть пустыми; частичная или небезопасная конфигурация отклоняется.
 
-Mock-вход и mock-интеграция доступны только в development. Production-сборка показывает закрытый экран входа и не выполняет mock-мутации.
+Mock-вход и mock-интеграция доступны только в development/test mock mode. Production показывает вход через Bitrix24, а missing/invalid runtime secrets обрабатывает fail closed без раскрытия значений. Mock-мутации в live mode запрещены.
 
 ## Что пока не подключено
 
-Production OAuth flow, таблица `portal_installations`, Supabase Postgres, app sessions, encrypted credentials, постоянное хранение, live Identity/Directory и Vercel deployment еще не реализованы. Реализованы server-only конфигурация identity единственного портала и storage-independent reconciliation contract будущей portal installation. Завершенный development/test spike подтвердил OAuth и portal identity, но не добавил их в production application flow. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не планируется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
+Remote Supabase schema, live Directory, persistent launcher projects/submissions и Vercel deployment еще не подключены. Локальный production OAuth flow связывает persistent state, portal/profile reconciliation, encrypted credentials replacement и app sessions, но live authenticated UI до business slices показывает безопасный placeholder. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не используется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
