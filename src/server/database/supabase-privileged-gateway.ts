@@ -76,6 +76,48 @@ export type AppSessionTokenHashTransport = (
   arguments_: AppSessionTokenHashArguments,
 ) => Promise<AppSessionRpcResponse>;
 
+export type CredentialEnvelopeArguments = {
+  p_access_token_ciphertext: string;
+  p_access_token_iv: string;
+  p_access_token_auth_tag: string;
+  p_refresh_token_ciphertext: string;
+  p_refresh_token_iv: string;
+  p_refresh_token_auth_tag: string;
+  p_encryption_version: number;
+  p_client_endpoint: string;
+  p_access_token_expires_at: string | null;
+};
+
+export type CredentialIdentityArguments = {
+  p_portal_installation_id: number;
+  p_profile_id: string;
+};
+
+export type CredentialCreateArguments = CredentialIdentityArguments & CredentialEnvelopeArguments;
+export type CredentialResolveArguments = CredentialIdentityArguments;
+export type CredentialRotateArguments = CredentialCreateArguments & { p_expected_token_version: number };
+export type CredentialMarkReauthArguments = CredentialIdentityArguments & {
+  p_expected_token_version: number;
+};
+
+export type CredentialRpcResponse = {
+  data: unknown;
+  error: unknown;
+};
+
+export type CredentialCreateTransport = (
+  arguments_: CredentialCreateArguments,
+) => Promise<CredentialRpcResponse>;
+export type CredentialResolveTransport = (
+  arguments_: CredentialResolveArguments,
+) => Promise<CredentialRpcResponse>;
+export type CredentialRotateTransport = (
+  arguments_: CredentialRotateArguments,
+) => Promise<CredentialRpcResponse>;
+export type CredentialMarkReauthTransport = (
+  arguments_: CredentialMarkReauthArguments,
+) => Promise<CredentialRpcResponse>;
+
 function createPrivilegedClient() {
   const configuration = getSupabasePrivilegedConfiguration();
   return createClient(configuration.url, configuration.serviceRoleKey, {
@@ -117,4 +159,20 @@ export const resolveAppSessionRpc: AppSessionTokenHashTransport = async (argumen
 
 export const revokeAppSessionRpc: AppSessionTokenHashTransport = async (arguments_) => {
   return createPrivilegedClient().rpc("revoke_app_session", arguments_);
+};
+
+export const createBitrix24UserCredentialsRpc: CredentialCreateTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("create_bitrix24_user_credentials", arguments_);
+};
+
+export const resolveBitrix24UserCredentialsRpc: CredentialResolveTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("resolve_bitrix24_user_credentials", arguments_);
+};
+
+export const rotateBitrix24UserCredentialsRpc: CredentialRotateTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("rotate_bitrix24_user_credentials", arguments_);
+};
+
+export const markBitrix24CredentialsReauthRequiredRpc: CredentialMarkReauthTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("mark_bitrix24_credentials_reauth_required", arguments_);
 };

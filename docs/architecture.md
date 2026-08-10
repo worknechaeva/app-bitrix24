@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth routes пока не используют repositories, удаленная Supabase schema не изменена, а live directory не подключен.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, локальную server-only конфигурацию identity единственного портала и persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices с migrations, атомарными RPC и server-only adapters. Описание остальной части Milestone 2 ниже является границей будущей production-реализации: production OAuth routes пока не используют repositories, удаленная Supabase schema не изменена, а live directory не подключен.
 
 ## Приложение
 
@@ -74,6 +74,19 @@ UI
 - Транзакционная RPC запрещает понижение, блокировку или удаление последнего активного administrator.
 - Первый administrator задается `BOOTSTRAP_ADMIN_BITRIX_USER_ID`, назначается после проверки `member_id`, `ACTIVE` и `USER_TYPE`, после чего фиксируется `admin_bootstrapped_at`.
 
+## Encrypted Bitrix24 credentials
+
+- `bitrix24_user_credentials` отделена от `profiles` и хранит не более одной row для composite profile/portal identity. Оба foreign key используют `RESTRICT`, а composite FK физически блокирует cross-portal credentials.
+- Plaintext access/refresh token pair существует только внутри server-only credential service. Storage-independent repository, Supabase adapter, privileged gateway и PostgreSQL принимают только ciphertext, IV, auth tag и несекретную metadata.
+- Каждый token независимо шифруется встроенным `node:crypto` через AES-256-GCM с новым 12-byte random IV и 16-byte authentication tag. Base64url без padding используется для binary fields; access и refresh IV обязаны отличаться.
+- AAD версии 1 канонически связывает ciphertext с marker `task-launcher:bitrix24-credentials:v1`, portal installation, profile, видом `access/refresh` и `token_version`. Подмена ciphertext, tag, token kind, identity или version завершается безопасной нормализованной crypto error.
+- `BITRIX24_CREDENTIALS_ENCRYPTION_KEY` является server-only base64 representation ровно 32 random bytes, находится вне БД, не имеет development default и лениво валидируется при обращении к subsystem. Build без вызова credentials service не требует secret.
+- Initial create блокирует profile, повторно проверяет active employee snapshots, устанавливает `active` и `token_version=1` database-side и не выполняет upsert существующей row.
+- Resolve repository возвращает encrypted envelopes только для актуального active profile и credentials status `active`; service расшифровывает pair только в server memory. `profile_inactive`, `reauth_required` и `disabled` не раскрывают encrypted fields и fail closed.
+- Rotation блокирует credentials row и profile и одной RPC заменяет всю encrypted pair, endpoint и expiry только при совпадении `expected_token_version`; новый ciphertext использует AAD следующей версии. Version conflict ничего не изменяет.
+- `mark_bitrix24_credentials_reauth_required` требует ту же optimistic version. Stale refresh failure старой версии после успешной rotation получает `version_conflict` и не блокирует новую pair. `disabled` не реактивируется; general-purpose disable/enable и re-auth recovery отсутствуют.
+- Foundation не подключен к production OAuth callback или provider refresh orchestration, не создает browser API и не меняет удаленную Supabase schema.
+
 ## Supabase, grants и authorization
 
 - У конечного пользователя нет Supabase JWT, поэтому `auth.uid()` не представляет пользователя Task Launcher.
@@ -85,7 +98,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Privileged gateway реализован для узких операций `portal_installations`, `profiles`, `oauth_transactions` и `app_sessions`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Privileged gateway реализован для узких операций `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 ### Server repositories
 
@@ -160,7 +173,7 @@ RPC размещаются вне публичной API-поверхности;
 8. `task_submissions` — постоянная история явных попыток;
 9. `task_submission_files` — безопасные file metadata.
 
-Credentials не хранятся в profiles. Encryption key находится вне БД. Token refresh заменяет access и refresh token атомарно и использует `token_version` для конкурентного обновления. Состояния `disabled` и `reauth_required` имеют разный смысл: первое запрещает использование credentials, второе требует нового OAuth-входа. Блокировка profile переводит credentials в запрещенное для использования состояние без автоматического восстановления.
+Credentials не хранятся в profiles. Encryption key находится вне БД. Реализованный token refresh storage transition заменяет access и refresh token атомарно и использует `token_version` для конкурентного обновления; реальный provider refresh пока не вызывается. Состояния `disabled` и `reauth_required` имеют разный смысл: первое запрещает использование credentials, второе требует нового OAuth-входа. Блокировка profile в будущем переводит credentials в запрещенное для использования состояние без автоматического восстановления.
 
 ## Launcher projects
 

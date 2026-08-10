@@ -331,3 +331,13 @@
 - **Последствия:** Raw token не хранится, не логируется и не входит в storage errors. Unknown, expired, revoked и profile inactive outcomes не раскрывают actor identity; inactive profile и недопустимые Bitrix snapshots fail closed. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute трех session RPC. Foundation хранится в Postgres без Redis/KV, но еще не подключен к production OAuth callback, session rotation, browser cookie или logout и не является готовой production authentication.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-034 — Persistent encrypted Bitrix24 credentials foundation
+
+- **Дата:** 2026-08-11
+- **Статус:** Active
+- **Контекст:** Будущим server-only Bitrix24 Identity, Directory и Task operations нужна persistent user-scoped token pair без plaintext в profiles, repository, gateway или БД и с корректным поведением конкурентного refresh.
+- **Решение:** `bitrix24_user_credentials` хранится отдельно от profiles и содержит отдельно зашифрованные AES-256-GCM access/refresh envelopes формата version 1. Ключ — ровно 32 bytes в server-only base64 environment вне БД; каждый token получает отдельный random 12-byte IV, а authenticated AAD связывает marker, portal, profile, token kind и `token_version`. Initial create устанавливает `active` и `token_version=1`; атомарная RPC заменяет pair только при совпадении expected version. Отдельный optimistic transition в `reauth_required` защищает новую pair от stale refresh failure, а `disabled` остается отдельным запрещающим состоянием без automatic enable.
+- **Последствия:** Plaintext token pair существует только в server memory credential service и не пересекает persistence boundary; tampering или AAD mismatch fail closed. Inactive profile, `reauth_required` и `disabled` не разрешают credentials. RLS и grants закрывают browser/Data API, service-role вызывает только четыре узкие `SECURITY INVOKER` RPC. Production OAuth callback, реальный provider refresh и recovery/reactivation flow не подключены; удаленная Supabase schema не изменена.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
