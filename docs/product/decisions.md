@@ -311,3 +311,13 @@
 - **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Bootstrap administrator, role management, last-admin guard, административная блокировка, sessions, credentials и production OAuth callback integration остаются будущими; удаленная Supabase schema не изменялась.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-032 — Persistent OAuth transactions foundation
+
+- **Дата:** 2026-08-10
+- **Статус:** Active
+- **Контекст:** Будущий production OAuth flow требует одноразовый state, который переживает server process и не раскрывает raw value через persistent boundary.
+- **Решение:** Server-only сервис генерирует 32 случайных байта в `base64url`, вычисляет полный lowercase SHA-256 hash и передает repository только hash с каноническим внутренним `return_path`. `oauth_transactions` использует database time и TTL ровно 10 минут; одна `SECURITY INVOKER` PostgreSQL RPC с row lock атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`.
+- **Последствия:** Raw state не хранится, не логируется и не входит в storage errors. Только первый допустимый consumer получает `return_path`; external и protocol-relative redirects, backslash, control characters и опасные percent-encoded разделители запрещены application и database checks. RLS включена без policies, доступ `PUBLIC`/`anon`/`authenticated` закрыт, а `service_role` имеет только select/insert/update и execute узкой RPC. Slice не подключен к production OAuth routes и не применен к удаленной Supabase schema.
+- **Связанные QA-записи:** —
+- **Заменяет:** —
