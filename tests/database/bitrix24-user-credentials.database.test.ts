@@ -105,26 +105,26 @@ describe.sequential("bitrix24_user_credentials database foundation", () => {
       encryption_version: 1,
       token_version: 1,
       client_endpoint: endpoint,
-      access_token_expires_at: expiresAt,
       status: "active",
       reauth_required_at: null,
     });
+    expect(new Date(stored!.access_token_expires_at).toISOString()).toBe(expiresAt);
     expect(stored!.access_token_iv).not.toBe(stored!.refresh_token_iv);
     expect(JSON.stringify(stored)).not.toContain(accessToken);
     expect(JSON.stringify(stored)).not.toContain(refreshToken);
     expect(JSON.stringify(stored)).not.toContain(TEST_ONLY_ENCRYPTION_KEY.toString("base64"));
     expect(Object.keys(stored!)).not.toContain("encryption_key");
 
-    await expect(
-      credentialService.resolve({ portalInstallationId: 1, profileId: profile.id }),
-    ).resolves.toEqual({
+    const resolved = await credentialService.resolve({ portalInstallationId: 1, profileId: profile.id });
+    expect(resolved).toMatchObject({
       outcome: "active",
       accessToken,
       refreshToken,
       clientEndpoint: endpoint,
-      accessTokenExpiresAt: expiresAt,
       tokenVersion: 1,
     });
+    if (resolved.outcome !== "active") throw new Error("Expected active credentials");
+    expect(new Date(resolved.accessTokenExpiresAt!).toISOString()).toBe(expiresAt);
 
     await expect(
       credentialService.createInitial({
