@@ -167,18 +167,18 @@ describe.sequential("administrator and profile lifecycle database security", () 
 
     await expect(
       lifecycleRepository.changeRole({
-        actorSessionTokenHash: hashAppSessionToken(sessionA.token),
-        targetProfileId: editor.id,
-        role: "administrator",
-      }),
-    ).resolves.toEqual({ outcome: "updated", role: "administrator" });
-    await expect(
-      lifecycleRepository.changeRole({
         actorSessionTokenHash: hashAppSessionToken(editorSession.token),
         targetProfileId: administratorA.id,
         role: "editor",
       }),
     ).resolves.toEqual({ outcome: "unauthorized", role: null });
+    await expect(
+      lifecycleRepository.changeRole({
+        actorSessionTokenHash: hashAppSessionToken(sessionA.token),
+        targetProfileId: editor.id,
+        role: "administrator",
+      }),
+    ).resolves.toEqual({ outcome: "updated", role: "administrator" });
 
     await setProfile(inactiveAdministrator.id, { is_active: false });
     await expect(
