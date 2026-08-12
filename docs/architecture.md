@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient и локальный production OAuth authentication contour поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices. Remote Supabase schema и deployment не изменялись; live directory и persistent business data не подключены.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient, локальный production OAuth authentication contour и administrator/profile lifecycle поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices. Remote Supabase schema и deployment не изменялись; live directory и persistent business data не подключены.
 
 ## Приложение
 
@@ -70,11 +70,13 @@ UI
 - Реализованная атомарная reconciliation RPC принимает только уже проверенный `ACTIVE=true`, `USER_TYPE=employee`, создает profile с `is_active=true`, обновляет только snapshots `active/userType` и verification timestamp и не выполняет предварительный application-level `SELECT`.
 - `role` и `is_active` reconciliation не обновляет. Inactive profile возвращается типизированным outcome без автоматической реактивации; полностью совпадающий snapshot сохраняет прежний `updated_at`.
 - Administrator Task Launcher не обязан быть администратором портала и может повысить другого вошедшего active employee.
-- Роль и `is_active` меняются только контролируемыми server-only операциями.
+- Роль и `is_active` меняются только контролируемыми server-only lifecycle operations. Browser передает target и желаемую роль, но не actor identity; server-side application-session facade разрешает actor и передает в repository только hash opaque session token.
 - При `is_active=false` отзываются все активные app sessions, использование OAuth credentials запрещается и новые Bitrix24 Identity, Directory и Task вызовы от имени profile не выполняются; история submissions и launcher projects сохраняются.
 - Повторное разрешение credentials не происходит автоматически без новой проверки identity и утвержденного recovery/reactivation flow; полный recovery flow пока не проектируется.
-- Транзакционная RPC запрещает понижение, блокировку или удаление последнего активного administrator.
-- Первый administrator задается `BOOTSTRAP_ADMIN_BITRIX_USER_ID`, назначается после проверки `member_id`, `ACTIVE` и `USER_TYPE`, после чего фиксируется `admin_bootstrapped_at`.
+- Транзакционные `change_profile_role` и `block_profile` RPC повторно разрешают active administrator из app session и запрещают понижение или блокировку последнего active administrator. Portal singleton row является portal-scoped serialization lock для всех bootstrap/role/block mutations, поэтому adversarial mutual demote/block race сохраняет минимум одного active administrator.
+- `block_profile` сохраняет общий порядок locks с credentials operations: блокирует credential row до target profile, повторно проверяет возможную concurrent insert и одной транзакцией устанавливает `is_active=false`, отзывает пригодные app sessions и переводит credentials в `disabled`. Session creation, прошедшая первой, затем отзывается; более поздняя creation видит inactive profile. Credential rotation, прошедшая первой, затем отключается; более поздняя видит inactive/disabled state.
+- Первый administrator задается необязательным `BOOTSTRAP_ADMIN_BITRIX_USER_ID`, лениво валидируется и назначается matching profile только после проверки `member_id`, `ACTIVE` и `USER_TYPE`. Bootstrap сериализуется на portal row, выполняется только при отсутствии active administrator и фиксируется в `admin_bootstrapped_at`; наличие другого administrator завершает bootstrap без автоматического повышения matching editor.
+- Unblock отсутствует: текущая schema не хранит provenance причины `disabled`, поэтому old credentials никогда не включаются автоматически и recovery требует отдельного утвержденного flow.
 
 ## Encrypted Bitrix24 credentials
 
@@ -100,7 +102,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Privileged gateway реализован для узких операций `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Privileged gateway реализован для узких операций `portal_installations`, `profiles`, administrator/profile lifecycle, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 Live authentication configuration (`TASK_LAUNCHER_APP_ORIGIN`, OAuth client credentials, portal identity, credentials encryption key и Supabase privileged configuration) разрешается лениво только на runtime boundaries. Callback URI вычисляется из app origin, OAuth token endpoint не переопределяется environment. Production build не требует runtime secrets; фактический live request без valid configuration завершается fail closed.
 
@@ -177,7 +179,7 @@ RPC размещаются вне публичной API-поверхности;
 8. `task_submissions` — постоянная история явных попыток;
 9. `task_submission_files` — безопасные file metadata.
 
-Credentials не хранятся в profiles. Encryption key находится вне БД. Реализованный token refresh storage transition заменяет access и refresh token атомарно и использует `token_version` для конкурентного обновления; реальный provider refresh пока не вызывается. Состояния `disabled` и `reauth_required` имеют разный смысл: первое запрещает использование credentials, второе требует нового OAuth-входа. Блокировка profile в будущем переводит credentials в запрещенное для использования состояние без автоматического восстановления.
+Credentials не хранятся в profiles. Encryption key находится вне БД. Реализованный token refresh storage transition заменяет access и refresh token атомарно и использует `token_version` для конкурентного обновления; реальный provider refresh пока не вызывается. Состояния `disabled` и `reauth_required` имеют разный смысл: первое запрещает использование credentials, второе требует нового OAuth-входа. Реализованная блокировка profile переводит credentials в `disabled` без расшифровки и без автоматического восстановления.
 
 ## Launcher projects
 

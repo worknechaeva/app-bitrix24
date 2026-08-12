@@ -20,6 +20,11 @@ export type ApplicationSession = {
   expiresAt?: string;
 };
 
+export type LiveApplicationSessionAuthority = {
+  sessionToken: string;
+  actor: AppSessionActor;
+};
+
 function mapLiveActor(actor: AppSessionActor): ApplicationSession {
   return {
     mode: "live",
@@ -39,11 +44,17 @@ export async function getApplicationSession(): Promise<ApplicationSession | null
       : null;
   }
 
-  const token = (await cookies()).get(APPLICATION_SESSION_COOKIE_NAME)?.value;
-  if (!token) return null;
+  const authority = await getLiveApplicationSessionAuthority();
+  return authority ? mapLiveActor(authority.actor) : null;
+}
+
+export async function getLiveApplicationSessionAuthority(): Promise<LiveApplicationSessionAuthority | null> {
+  if (getApplicationRuntimeMode() !== "live") return null;
+  const sessionToken = (await cookies()).get(APPLICATION_SESSION_COOKIE_NAME)?.value;
+  if (!sessionToken) return null;
   try {
-    const result = await new AppSessionService(createSupabaseAppSessionRepository()).resolve(token);
-    return result.outcome === "active" ? mapLiveActor(result.actor) : null;
+    const result = await new AppSessionService(createSupabaseAppSessionRepository()).resolve(sessionToken);
+    return result.outcome === "active" ? { sessionToken, actor: result.actor } : null;
   } catch {
     return null;
   }

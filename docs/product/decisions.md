@@ -351,3 +351,13 @@
 - **Последствия:** `reauth_required` может вернуться в `active` только после нового verified OAuth login; `disabled` автоматически не реактивируется. Production callback не выполняет immediate provider refresh. Пока persistent launcher projects, Directory и submissions не подключены, live authenticated UI показывает безопасный placeholder и не выдает mock business data. Remote Supabase, deployment и test portal не изменялись, поэтому решение не означает завершенный production deployment.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-036 — Administrator и profile lifecycle security contour
+
+- **Дата:** 2026-08-13
+- **Статус:** Active
+- **Контекст:** Persistent profiles, app sessions и encrypted credentials уже запрещали использование inactive identity, но не существовало законченных операций первого administrator, role management и атомарной административной блокировки с защитой от concurrent last-admin races.
+- **Решение:** Matching verified active employee может один раз выполнить first-admin bootstrap через необязательный server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Узкие `SECURITY INVOKER` RPC изменяют роль и блокируют profile только по hash текущей active administrator app session. Portal singleton row сериализует admin mutations и last-active-administrator guard. Block одной транзакцией деактивирует profile, отзывает его пригодные sessions и переводит credentials в `disabled` без расшифровки.
+- **Последствия:** Browser не передает actor identity; authorization повторяется database-side. OAuth reconciliation не меняет role и не реактивирует blocked profile, stale session/credential operations не могут оставить usable authority после block. Unblock отложен до controlled recovery с безопасной provenance состояния `disabled`; verified OAuth не активирует старую pair. Generic audit framework не добавляется, потому что он не требуется для correctness этого slice.
+- **Связанные QA-записи:** —
+- **Заменяет:** —

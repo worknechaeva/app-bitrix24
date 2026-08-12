@@ -9,6 +9,7 @@ import {
   getProductionOAuthConfiguration,
   type ProductionOAuthConfiguration,
 } from "@/lib/env/production-oauth";
+import { getBootstrapAdminBitrixUserId } from "@/lib/env/bootstrap-admin";
 import type { AppSessionService } from "./app-session-service";
 import { createSupabaseAppSessionRepository } from "./supabase-app-session-repository";
 import {
@@ -31,6 +32,8 @@ import { PortalInstallationIdentityError } from "@/server/portal/portal-installa
 import { createSupabasePortalInstallationRepository } from "@/server/portal/supabase-portal-installation-repository";
 import type { ProfileRepository } from "@/server/profile/profile-repository";
 import { createSupabaseProfileRepository } from "@/server/profile/supabase-profile-repository";
+import type { ProfileLifecycleRepository } from "@/server/profile/profile-lifecycle-repository";
+import { createSupabaseProfileLifecycleRepository } from "@/server/profile/supabase-profile-lifecycle-repository";
 
 const SAFE_HEADERS = {
   "Cache-Control": "no-store",
@@ -48,6 +51,8 @@ export type ProductionOAuthRuntime = {
   stateService: OAuthStateService;
   portalRepository: PortalInstallationRepository;
   profileRepository: ProfileRepository;
+  profileLifecycleRepository: ProfileLifecycleRepository;
+  bootstrapAdminBitrixUserId: string | null;
   credentialService: Bitrix24CredentialService;
   sessionService: AppSessionService;
   logger: ProductionAuthLogger;
@@ -230,6 +235,19 @@ export async function handleProductionOAuthCallback(
       throw new Bitrix24AuthError("credential_version_conflict");
     }
 
+    let bootstrapOutcome = "not_configured_or_not_matching";
+    if (runtime.bootstrapAdminBitrixUserId === currentUser.id) {
+      const bootstrap = await runtime.profileLifecycleRepository.bootstrapFirstAdministrator({
+        portalInstallationId: 1,
+        profileId: profile.profile.id,
+        verifiedBitrixUserId: currentUser.id,
+      });
+      if (["profile_unknown", "profile_inactive", "identity_mismatch"].includes(bootstrap.outcome)) {
+        throw new Bitrix24AuthError("storage_failure");
+      }
+      bootstrapOutcome = bootstrap.outcome;
+    }
+
     const previousToken = readApplicationSessionCookie(request);
     if (previousToken) {
       try {
@@ -253,6 +271,7 @@ export async function handleProductionOAuthCallback(
       status: "success",
       memberIdMatches: true,
       profileOutcome: profile.outcome,
+      bootstrapOutcome,
       credentialOutcome: credentials.outcome,
       sessionOutcome: issued.outcome,
     });
@@ -322,6 +341,8 @@ export function createProductionOAuthRuntime(): ProductionOAuthRuntime {
     stateService: new OAuthStateService(oauthRepository),
     portalRepository: createSupabasePortalInstallationRepository(),
     profileRepository: createSupabaseProfileRepository(),
+    profileLifecycleRepository: createSupabaseProfileLifecycleRepository(),
+    bootstrapAdminBitrixUserId: getBootstrapAdminBitrixUserId(),
     credentialService: createBitrix24CredentialService(createSupabaseBitrix24CredentialRepository()),
     sessionService: new PersistentAppSessionService(createSupabaseAppSessionRepository()),
     logger: { info: (event, details) => console.info(event, details) },
