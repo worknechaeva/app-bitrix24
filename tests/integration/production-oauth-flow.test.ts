@@ -24,6 +24,7 @@ import type {
 } from "@/server/oauth/oauth-transaction-repository";
 import type { PortalInstallationRepository } from "@/server/portal/portal-installation-repository";
 import type { Profile, ProfileRepository } from "@/server/profile/profile-repository";
+import type { ProfileLifecycleRepository } from "@/server/profile/profile-lifecycle-repository";
 
 const profileId = "018f47a7-7c60-7a31-8f6a-27f4bb596f5a";
 const sessionId = "118f47a7-7c60-7a31-8f6a-27f4bb596f5a";
@@ -146,6 +147,19 @@ function makeRuntime() {
   const profileRepository: ProfileRepository = {
     reconcileVerifiedEmployee: vi.fn(async () => ({ outcome: "unchanged" as const, profile })),
   };
+  const profileLifecycleRepository: ProfileLifecycleRepository = {
+    bootstrapFirstAdministrator: vi.fn(async () => ({
+      outcome: "promoted" as const,
+      role: "administrator" as const,
+      adminBootstrappedAt: "2026-08-12T12:00:00.000Z",
+    })),
+    changeRole: vi.fn(async () => ({ outcome: "unauthorized" as const, role: null })),
+    block: vi.fn(async () => ({
+      outcome: "unauthorized" as const,
+      sessionsRevoked: 0,
+      credentialsDisabled: 0,
+    })),
+  };
   const logs: unknown[] = [];
   const runtime: ProductionOAuthRuntime = {
     config,
@@ -153,6 +167,8 @@ function makeRuntime() {
     stateService: new OAuthStateService(oauthRepository, () => Buffer.alloc(32, 0xab)),
     portalRepository,
     profileRepository,
+    profileLifecycleRepository,
+    bootstrapAdminBitrixUserId: null,
     credentialService: new Bitrix24CredentialService(
       credentials,
       new Bitrix24CredentialCrypto(Buffer.alloc(32, 0x5a)),
@@ -168,6 +184,7 @@ function makeRuntime() {
     sessions,
     portalRepository,
     profileRepository,
+    profileLifecycleRepository,
     logs,
   };
 }
@@ -337,8 +354,44 @@ describe("production OAuth callback", () => {
     }
   });
 
+  it("bootstraps only the matching verified active employee after credentials and before session issuance", async () => {
+    const { runtime, profileLifecycleRepository, credentials, sessions } = makeRuntime();
+    runtime.bootstrapAdminBitrixUserId = "42";
+    const state = await issueState(runtime);
+    const response = await handleProductionOAuthCallback(
+      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+    expect(response.status).toBe(302);
+    expect(profileLifecycleRepository.bootstrapFirstAdministrator).toHaveBeenCalledExactlyOnceWith({
+      portalInstallationId: 1,
+      profileId,
+      verifiedBitrixUserId: "42",
+    });
+    expect(
+      vi.mocked(profileLifecycleRepository.bootstrapFirstAdministrator).mock.invocationCallOrder[0],
+    ).toBeGreaterThan(vi.mocked(credentials.replaceAfterVerifiedOAuth).mock.invocationCallOrder[0]!);
+    expect(
+      vi.mocked(profileLifecycleRepository.bootstrapFirstAdministrator).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(sessions.create).mock.invocationCallOrder[0]!);
+    expect(sessions.create).toHaveBeenCalledOnce();
+  });
+
+  it("leaves a nonmatching verified profile unchanged by bootstrap", async () => {
+    const { runtime, profileLifecycleRepository } = makeRuntime();
+    runtime.bootstrapAdminBitrixUserId = "99";
+    const state = await issueState(runtime);
+    const response = await handleProductionOAuthCallback(
+      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      runtime,
+    );
+    expect(response.status).toBe(302);
+    expect(profileLifecycleRepository.bootstrapFirstAdministrator).not.toHaveBeenCalled();
+  });
+
   it("does not issue a session when verified OAuth credentials are disabled", async () => {
-    const { runtime, credentials, sessions } = makeRuntime();
+    const { runtime, credentials, profileLifecycleRepository, sessions } = makeRuntime();
+    runtime.bootstrapAdminBitrixUserId = "42";
     vi.mocked(credentials.inspectForVerifiedOAuth).mockResolvedValueOnce({ outcome: "disabled" });
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
@@ -346,6 +399,7 @@ describe("production OAuth callback", () => {
       runtime,
     );
     expect(response.status).toBe(403);
+    expect(profileLifecycleRepository.bootstrapFirstAdministrator).not.toHaveBeenCalled();
     expect(sessions.create).not.toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toBeNull();
   });

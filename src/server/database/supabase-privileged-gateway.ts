@@ -31,6 +31,40 @@ export type ProfileRpcResponse = {
 
 export type ProfileRpcTransport = (arguments_: ProfileRpcArguments) => Promise<ProfileRpcResponse>;
 
+export type FirstAdministratorBootstrapArguments = {
+  p_portal_installation_id: number;
+  p_profile_id: string;
+  p_verified_bitrix_user_id: string;
+};
+
+export type ProfileRoleChangeArguments = {
+  p_actor_session_token_hash: string;
+  p_target_profile_id: string;
+  p_new_role: "editor" | "administrator";
+};
+
+export type ProfileBlockArguments = {
+  p_actor_session_token_hash: string;
+  p_target_profile_id: string;
+};
+
+export type ProfileLifecycleRpcResponse = {
+  data: unknown;
+  error: unknown;
+};
+
+export type FirstAdministratorBootstrapTransport = (
+  arguments_: FirstAdministratorBootstrapArguments,
+) => Promise<ProfileLifecycleRpcResponse>;
+
+export type ProfileRoleChangeTransport = (
+  arguments_: ProfileRoleChangeArguments,
+) => Promise<ProfileLifecycleRpcResponse>;
+
+export type ProfileBlockTransport = (
+  arguments_: ProfileBlockArguments,
+) => Promise<ProfileLifecycleRpcResponse>;
+
 export type OAuthTransactionCreateArguments = {
   state_hash: string;
   return_path: string;
@@ -146,6 +180,18 @@ export const reconcilePortalInstallationRpc: PortalInstallationRpcTransport = as
 
 export const reconcileProfileRpc: ProfileRpcTransport = async (arguments_) => {
   return createPrivilegedClient().rpc("reconcile_profile", arguments_);
+};
+
+export const bootstrapFirstAdministratorRpc: FirstAdministratorBootstrapTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("bootstrap_first_administrator", arguments_);
+};
+
+export const changeProfileRoleRpc: ProfileRoleChangeTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("change_profile_role", arguments_);
+};
+
+export const blockProfileRpc: ProfileBlockTransport = async (arguments_) => {
+  return createPrivilegedClient().rpc("block_profile", arguments_);
 };
 
 export const createOAuthTransactionRow: OAuthTransactionCreateTransport = async (arguments_) => {

@@ -58,9 +58,10 @@ Migration каждого подсистемного этапа создаетс�
 - profiles без обязательной зависимости от `auth.users`, UUID и unique portal/user identity — foundation реализован локально;
 - атомарная reconciliation проверенного active employee с ролью нового profile `editor`, безопасными snapshots и сохранением `role`/`is_active` — реализована локально;
 - RLS, grants, pgTAP, database integration и concurrency coverage для profiles — реализованы и подключены к локальному production OAuth callback без изменения удаленной schema;
-- первый administrator через `BOOTSTRAP_ADMIN_BITRIX_USER_ID` — будущая задача;
-- управление ролями, защита последнего active administrator и административная блокировка — будущие задачи;
-- sessions/credentials enforcement для inactive profile и recovery/reactivation flow — будущие задачи.
+- первый administrator через lazy server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID` и database-time `admin_bootstrapped_at` — реализован локально;
+- actor-aware управление ролями, concurrency-safe защита последнего active administrator и административная блокировка — реализованы локально;
+- атомарные revoke-all пригодных sessions и disable credentials для blocked profile — реализованы локально;
+- recovery/reactivation и unblock остаются будущими задачами и не активируют старые `disabled` credentials.
 
 ### 5. Sessions и encrypted credentials
 
@@ -72,7 +73,7 @@ Migration каждого подсистемного этапа создаетс�
 - credentials foundation подключен к production OAuth callback через отдельные version-safe verified OAuth inspection/replacement RPC; реальный automatic provider refresh и удаленная schema не подключены;
 - live `Bitrix24IdentityClient`, production OAuth start/callback/install receipt, проверка `app`/`user_brief`, portal/profile reconciliation, session rotation и secure cookie — реализованы локально;
 - live protected runtime показывает fail-closed placeholder до подключения persistent launcher projects/Directory/submissions и не отображает mock business data;
-- revocation одной session и browser logout реализованы; revoke-all при блокировке profile, cleanup и recovery/reactivation credentials остаются будущими задачами.
+- revocation одной session, browser logout и транзакционный revoke-all при блокировке profile реализованы; cleanup и recovery/reactivation credentials остаются будущими задачами.
 
 ### 6. Directory clients
 
@@ -97,8 +98,8 @@ Migration каждого подсистемного этапа создаетс�
 - actor-aware repositories;
 - RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`, остальные таблицы остаются будущими;
 - service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`;
-- транзакционные RPC для ролей, sessions, archive/restore и token rotation;
-- adversarial regression-тесты доступа.
+- транзакционные RPC для bootstrap/ролей/profile block и sessions реализованы; archive/restore остается будущим, token rotation реализован;
+- adversarial regression-тесты actor authorization, last-admin и block/session/credential races реализованы для profile lifecycle.
 
 ### 9. Persistent submissions history
 

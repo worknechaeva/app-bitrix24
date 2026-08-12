@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`, а также законченный локальный production OAuth authentication contour. Remote Supabase schema, deployment и live portal не изменялись; production business data и live task creation еще не подключены.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`, законченный локальный production OAuth authentication contour и security contour administrator/profile lifecycle. Remote Supabase schema, deployment и live portal не изменялись; production business data и live task creation еще не подключены.
 
 ## Формат продукта и портал
 
@@ -47,7 +47,7 @@
 - Live `Bitrix24IdentityClient` использует официальный token endpoint, фиксированные OAuth semantics `app`/`user_brief`, проверяет trusted `member_id`, canonical HTTPS client endpoint, current user и admission active employee до любой profile/session/credentials persistence.
 - Logout отзывает текущую persistent session, всегда очищает browser cookie и возвращает на `/login`; storage failure не оставляет browser в визуально authenticated состоянии.
 
-Первый administrator задается через server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Роль назначается только после успешного OAuth-входа и проверки `member_id`, `ACTIVE=true` и `USER_TYPE=employee`. Bootstrap выполняется один раз, фиксируется в `admin_bootstrapped_at`, после проверки переменная удаляется из environment. Аварийное восстановление будет отдельной будущей server-only процедурой; персональный Bitrix user ID не хранится в документации или Git.
+Первый administrator задается через необязательный server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Значение лениво валидируется как канонический Bitrix user ID и не требуется для build. Роль назначается только matching profile после успешного OAuth-входа и проверки `member_id`, `ACTIVE=true` и `USER_TYPE=employee`. Portal-scoped database lock атомарно повышает profile только при отсутствии active administrator. Повторный bootstrap того же administrator идемпотентен; если active administrator уже существует, matching editor автоматически не повышается. Завершение matching bootstrap фиксируется database time в `portal_installations.admin_bootstrapped_at`, после чего переменная удаляется из environment. Аварийное восстановление будет отдельной будущей server-only процедурой; персональный Bitrix user ID не хранится в документации или Git.
 
 ## Profiles
 
@@ -61,7 +61,12 @@
 - `is_active=false` отзывает все активные app sessions и запрещает использование OAuth credentials.
 - После блокировки новые Bitrix24 Identity, Directory и Task вызовы от имени profile не выполняются; история submissions и launcher projects сохраняются.
 - Использование credentials не разрешается повторно автоматически: нужны новая проверка identity и утвержденный recovery/reactivation flow. Полный recovery flow в Milestone 2 пока не проектируется.
-- Bootstrap первого administrator, управление ролями, административная блокировка и last-admin guard остаются будущими операциями и не входят в реализованный profiles foundation.
+- Bootstrap первого administrator, actor-aware изменение `editor <-> administrator`, административная блокировка и last-active-administrator guard реализованы узкими server-only PostgreSQL RPC.
+- Actor admin mutation разрешается из текущей opaque app session: browser передает только target profile и требуемую роль, server-side facade разрешает actor, а database повторно проверяет session, portal, active profile и актуальную роль administrator. Actor profile ID из browser input не принимается.
+- Все role/block mutations одного portal сериализуются на singleton installation row. Поэтому взаимные concurrent demote/block двух administrators не могут оставить систему без active administrator.
+- Block одной транзакцией устанавливает `profiles.is_active=false`, отзывает все еще пригодные app sessions target и переводит его credentials в `disabled` без расшифровки token pair. Согласованный порядок locks сохраняет invariant при гонках с session creation, credential rotation и verified OAuth replacement.
+- Unblock/recovery не реализован: schema не различает безопасно происхождение `disabled`, старые token pairs не реактивируются, а verified OAuth по-прежнему не обходит administrative block.
+- Admin audit framework в этом slice не добавлен: он не нужен для correctness, а существующая data model не содержит утвержденного общего security audit contract.
 
 ## Интеграционные границы Milestone 2
 
@@ -194,7 +199,7 @@ Credentials хранятся отдельно от profiles. Сырой session 
 - Actor profile ID из браузера или form data не считается доверенным.
 - Критические RPC разрешают actor через активную app session и повторно проверяют portal, profile, `is_active` и role.
 
-Для реализованных `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Production OAuth routes локально связаны с этими repositories. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе.
+Для реализованных `portal_installations`, `profiles`, administrator/profile lifecycle, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials` slices таблицы находятся в `public`, RLS включена без пользовательских policies, а все права на таблицы и RPC отозваны у `PUBLIC`, `anon` и `authenticated`. `service_role` имеет только необходимые права и вызывает узкие `SECURITY INVOKER` RPC через минимальный server-only gateway; сырой Supabase client не экспортируется. Production OAuth routes локально связаны с этими repositories. Local Supabase stack и migrations зафиксированы в репозитории, но migrations не применялись к удаленной базе.
 
 ## Technical spikes Milestone 2
 
