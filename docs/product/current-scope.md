@@ -1,6 +1,6 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`, законченный локальный production OAuth authentication contour и security contour administrator/profile lifecycle. Remote Supabase schema, deployment и live portal не изменялись; production business data и live task creation еще не подключены.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и зашифрованных `bitrix24_user_credentials`, законченный локальный production OAuth authentication contour, security contour administrator/profile lifecycle и production Directory adapter по официально документированным и read-only live verified REST-контрактам. Remote Supabase schema, deployment и live portal business data не изменялись; production business data и live task creation еще не подключены.
 
 ## Формат продукта и портал
 
@@ -76,7 +76,7 @@ UI не обращается к Bitrix24 напрямую. Используют�
 - `Bitrix24DirectoryClient` — server-side поиск и пагинация group/project/scrum и active employee, исключение collab и extranet-enabled сущностей, проверка доступности и `create_tasks`;
 - `Bitrix24TaskClient` — контракт будущего создания задач.
 
-Identity и Directory получают live-реализации в Milestone 2 после успешных соответствующих technical spikes; сейчас существуют только их server-only контракты. `Bitrix24TaskClient` уже использует `MockBitrix24TaskClient` только в development/test, а server-only composition root всегда выбирает `DisabledBitrix24TaskClient` в production. Режим не принимается из браузера или form data.
+Identity имеет live-реализацию. Production `Bitrix24DirectoryClient` реализован локально как server-only adapter с runtime validation, bounded pagination, safe typed errors и credentials provider поверх существующего encrypted credential service. Он не принимает token, endpoint или REST method из браузера и не выполняет automatic refresh. Employee Directory использует `user.get`/`user.search` с `user_brief`: list path через `user.get` live verified, optional `user.search` path подтвержден документацией и synthetic tests. Entity Directory использует live verified `socialnetwork.api.workgroup.list`, `sonet_group.get` и `sonet_group.feature.access` с permissions `socialnetwork`/`sonet_group`. Read-only campaign подтвердила response contracts и фильтрацию без изменения portal business data. `Bitrix24TaskClient` использует `MockBitrix24TaskClient` только в development/test, а server-only composition root всегда выбирает `DisabledBitrix24TaskClient` в production.
 
 ## Главная страница
 
@@ -209,10 +209,7 @@ Credentials хранятся отдельно от profiles. Сырой session 
 
 В `APP_RUNTIME_MODE=live` защищенный UI разрешает actor только через persistent app session. Пока launcher projects, Directory и submissions не подключены к persistent business layer, authenticated пользователь видит безопасный milestone placeholder и logout, но не mock projects, employees, tasks или submissions. Mock auth и mock business UI остаются только development/test `mock` mode; прямые mock server actions в live mode fail closed.
 
-Будущими остаются два directory spike, которые выполняются только после отдельного подтверждения:
-
-1. Directory group/project/scrum, collab, extranet-enabled сущностей и `create_tasks`.
-2. Directory active employee и минимальных scopes.
+Directory contract analysis по официальной документации и согласованная read-only live campaign завершены. Подтверждены `user_brief`, `socialnetwork`, `sonet_group`, member binding, employee/entity response shapes и `tasks/create_tasks` capability. Проверка не создавала и не изменяла пользователей, группы, проекты, Scrum или задачи; raw OAuth tokens, codes и provider responses не сохранялись.
 
 Supabase Custom OAuth spike не входит в Milestone 2.
 
