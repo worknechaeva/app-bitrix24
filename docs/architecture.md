@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient, локальный production OAuth authentication contour и administrator/profile lifecycle поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices. Remote Supabase schema и deployment не изменялись; live directory и persistent business data не подключены.
+Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient, локальный production OAuth authentication contour и administrator/profile lifecycle поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices, а также production Directory adapter по документированным и read-only live verified Bitrix24 REST contracts. Remote Supabase schema и deployment не изменялись; persistent business data не подключены.
 
 ## Приложение
 
@@ -145,13 +145,16 @@ RPC размещаются вне публичной API-поверхности;
 
 ### `Bitrix24DirectoryClient`
 
-- ищет доступные текущему OAuth-пользователю group/project/scrum;
-- исключает collab, extranet-enabled, inactive, closed и недоступные сущности;
-- проверяет право `create_tasks`;
-- ищет active employee;
-- выполняет server-side фильтрацию и пагинацию и возвращает минимальные DTO.
+- получает credentials только через actor-bound server-only provider поверх существующего encrypted credential service; browser не задает token, endpoint или REST method;
+- `socialnetwork.api.workgroup.list` дает current-user-visible entity и authoritative `TYPE=group/project/scrum/collab`;
+- `sonet_group.get` с `IS_EXTRANET=N` служит отдельным intranet allowlist, а `ACTIVE=Y`/`CLOSED=N` исключают deactivated и archived entity;
+- `sonet_group.feature.access` с `FEATURE=tasks`, `OPERATION=create_tasks` является authoritative read-only capability check;
+- `user.get` используется для полного employee списка, `user.search` с `FIND` — для server-side поиска; оба результата финально фильтруются по `ACTIVE=true` и `USER_TYPE=employee`;
+- все list methods проходят provider pagination `start`/`next` с page size 50, ограничением 20 страниц, запретом повторного/non-advancing cursor и duplicate ID;
+- provider payload валидируется runtime-схемами и преобразуется только в минимальные DTO; raw response, tokens и provider descriptions наружу не возвращаются;
+- expired access token возвращает typed `unauthorized` без refresh/retry. Будущий refresh-on-demand подключается через credential provider без изменения Directory domain API.
 
-Основной метод поиска сотрудников выбирается directory spike между `user.search + user.get` и `humanresources.employee.search + user.get`. `user.get` остается финальной проверкой active/employee.
+Employee listing через `user.get` live verified с `user_brief`; optional query path через `user.search` подтвержден документацией и synthetic contract tests, но live не вызывался как ненужный для campaign. Entity methods live verified с permissions `socialnetwork` для modern list и `sonet_group` для legacy/capability family. Read-only campaign подтвердила permission set, provider response shapes, employee/entity filtering и `create_tasks` capability без создания или изменения portal business data. Временный HTTPS callback после проверки восстановлен на исходное значение; tokens, OAuth code и raw provider responses не сохранялись.
 
 ### `Bitrix24TaskClient`
 

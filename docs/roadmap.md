@@ -31,10 +31,7 @@ Roadmap фиксирует границы этапов, а не календар
 1. OAuth отдельного PWA через локальное API-only приложение Bitrix24.
 2. Проверка `member_id`, portal identity и безопасного обновления domain.
 
-Остаются будущими и запускаются только после отдельного подтверждения:
-
-3. Directory group/project/scrum, исключение collab и extranet-enabled сущностей, проверка `create_tasks`.
-4. Directory active employee, сравнение методов поиска и минимальных scopes.
+Directory contracts проанализированы по официальной REST-документации, production adapter и synthetic contract coverage реализованы локально. Employee methods с `user_brief` и entity methods с `socialnetwork`/`sonet_group` прошли согласованную read-only live verification без portal business mutations.
 
 Supabase Custom OAuth spike не входит в Milestone 2.
 
@@ -78,10 +75,11 @@ Migration каждого подсистемного этапа создаетс�
 ### 6. Directory clients
 
 - live `Bitrix24IdentityClient`;
-- live `Bitrix24DirectoryClient`;
-- server-side pagination и минимальные DTO;
-- доступные group/project/scrum и active employee;
-- повторная проверка Bitrix permissions перед сохранением справочной связи.
+- production `Bitrix24DirectoryClient` по documented и read-only live verified contracts — реализован локально;
+- server-side bounded pagination, duplicate/cursor guards, runtime validation и минимальные DTO — реализованы;
+- active employee через `user.get`/`user.search` с `user_brief` — реализован и покрыт synthetic contract tests; `user.get` list path live verified, optional `user.search` live не требовался;
+- group/project/scrum, collab/extranet/status exclusion и `create_tasks` capability — реализованы fail closed, покрыты synthetic contract tests и read-only live verified с `socialnetwork`/`sonet_group`;
+- повторная проверка Bitrix permissions перед сохранением справочной связи остается частью launcher projects slice.
 
 ### 7. Персональные launcher projects
 

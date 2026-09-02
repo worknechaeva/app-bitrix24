@@ -361,3 +361,14 @@
 - **Последствия:** Browser не передает actor identity; authorization повторяется database-side. OAuth reconciliation не меняет role и не реактивирует blocked profile, stale session/credential operations не могут оставить usable authority после block. Unblock отложен до controlled recovery с безопасной provenance состояния `disabled`; verified OAuth не активирует старую pair. Generic audit framework не добавляется, потому что он не требуется для correctness этого slice.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
+
+## DEC-037 — Production Directory contract и read-only live verification
+
+- **Дата:** 2026-08-13
+- **Обновлено:** 2026-09-02
+- **Статус:** Active
+- **Контекст:** Directory должен безопасно нормализовать task-capable entity и active employee. Первоначально local application имело только `user_brief`; позднее пользователь отдельно разрешил добавить `socialnetwork`/`sonet_group` и выполнить ограниченную read-only live verification на test portal.
+- **Решение:** Employee Directory использует документированные `user.get` для списка и `user.search` для запроса с финальной фильтрацией `ACTIVE=true`, `USER_TYPE=employee`. Entity Directory объединяет `socialnetwork.api.workgroup.list` для `TYPE`, `sonet_group.get` для `IS_EXTRANET` и `sonet_group.feature.access(tasks/create_tasks)` для authoritative capability. Все surfaces используют bounded `start/next` pagination, runtime validation, duplicate/cursor guards, actor-bound encrypted credentials provider и safe typed errors. Automatic refresh отсутствует.
+- **Последствия:** Employee list path через `user.get` подтвержден live с `user_brief`; optional `user.search` path подтвержден документацией и synthetic tests и не вызывался live как ненужный для campaign. Entity methods подтверждены live с `socialnetwork`/`sonet_group`. Согласованная read-only campaign подтвердила permission set, provider contracts, employee/entity filtering и `create_tasks` capability без portal business mutations и сохранения raw OAuth material. Temporary callback после проверки восстановлен; production adapter остается fail closed при отсутствующих или истекших credentials и не выполняет automatic refresh.
+- **Связанные QA-записи:** —
+- **Заменяет:** уточняет DEC-022, DEC-025 и DEC-026 без изменения их продуктовых границ.
