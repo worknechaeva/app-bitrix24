@@ -1,6 +1,6 @@
 # Task Launcher
 
-Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал полностью локальный mock-сценарий. Milestone 2 добавил persistent Supabase foundations и локальный production OAuth authentication contour с encrypted credentials и opaque app sessions. Live-справочники, persistent business data, remote schema и deployment еще не подключены.
+Внутреннее русскоязычное mobile-first PWA для быстрой постановки задач в облачном Bitrix24. Первый milestone реализовал локальный mock-сценарий. Milestone 2 добавил persistent Supabase foundation, production OAuth contour, live Directory и персональные persistent launcher projects. Remote schema, deployment, submissions и live task creation еще не подключены.
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
@@ -14,7 +14,8 @@
 - сценарии успешного ответа, ошибки Bitrix24 и неизвестного статуса после timeout;
 - защита от двойной отправки по idempotency key и ручной повтор после timeout с новым ключом;
 - компактная история с доменными статусами и фильтром по проекту;
-- административный mock CRUD проектов с серверной проверкой роли;
+- персональные проекты: owner редактирует свои настройки, administrator видит все и архивирует чужие;
+- безопасный повтор создания проекта с тем же ключом операции и отдельное обновление списка после сбоя чтения;
 - mock-экраны пользователей и состояния интеграции;
 - PWA manifest, иконки и инструкция по установке;
 - unit/integration-тесты, Playwright E2E и GitHub Actions.
@@ -29,7 +30,7 @@
 - Браузер получает только непрозрачную app session cookie с production-флагами `HttpOnly`, `Secure` и `SameSite=Lax`; Bitrix24 tokens и database credentials остаются server-only.
 - Интеграция разделяется на `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`.
 - Identity и Directory входят в Milestone 2. Live Task client, создание задач, реальная загрузка файлов в Bitrix24, TAGS, Scrum backlog и status synchronization относятся к следующему milestone.
-- Постоянная модель использует персональные `launcher_projects`, profiles, sessions, encrypted credentials и persistent submissions history.
+- Постоянная модель уже использует персональные `launcher_projects`, profiles, sessions и encrypted credentials; persistent submissions history остается следующим локальным slice.
 - User-scoped Supabase RLS отсутствует: права проверяют app session, server-only DAL, repositories и узкие PostgreSQL RPC; Data API закрывается grants и RLS от `anon/authenticated`.
 
 Полный scope находится в [docs/product/current-scope.md](./docs/product/current-scope.md), а порядок этапов и четыре обязательных spike — в [docs/roadmap.md](./docs/roadmap.md).
@@ -119,4 +120,4 @@ Mock-вход и mock-интеграция доступны только в deve
 
 ## Что пока не подключено
 
-Remote Supabase schema, live Directory, persistent launcher projects/submissions и Vercel deployment еще не подключены. Локальный production OAuth flow связывает persistent state, portal/profile reconciliation, encrypted credentials replacement и app sessions, но live authenticated UI до business slices показывает безопасный placeholder. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не используется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).
+Remote Supabase schema, persistent submissions и Vercel deployment еще не подключены. Локальный production OAuth flow связывает persistent state, portal/profile reconciliation, encrypted credentials replacement и app sessions; live authenticated UI открывает persistent проекты с Directory, а остальные business-страницы показывают безопасный placeholder. В production создание задач закрыто через `DisabledBitrix24TaskClient`, поэтому фиктивные success и Bitrix task ID не создаются. Supabase Auth не используется. Live task creation, реальная загрузка файлов и status synchronization отложены до следующего интеграционного milestone. Актуальные границы этапов находятся в [docs/roadmap.md](./docs/roadmap.md).

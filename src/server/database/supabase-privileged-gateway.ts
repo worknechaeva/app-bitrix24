@@ -144,6 +144,24 @@ export type CredentialRpcResponse = {
   error: unknown;
 };
 
+export type LauncherProjectListArguments = { p_actor_session_token_hash: string };
+export type LauncherProjectSaveArguments = LauncherProjectListArguments & {
+  p_project_id: string | null;
+  p_creation_operation_key: string | null;
+  p_name: string;
+  p_website_url: string;
+  p_bitrix_entity_id: string;
+  p_bitrix_entity_type: "group" | "project" | "scrum";
+  p_bitrix_entity_title: string;
+  p_required_tag: string;
+  p_default_responsible_id: string;
+};
+export type LauncherProjectArchiveArguments = LauncherProjectListArguments & {
+  p_project_id: string;
+  p_archived: boolean;
+};
+export type LauncherProjectRpcTransport<T> = (arguments_: T) => Promise<{ data: unknown; error: unknown }>;
+
 export type CredentialCreateTransport = (
   arguments_: CredentialCreateArguments,
 ) => Promise<CredentialRpcResponse>;
@@ -241,3 +259,13 @@ export const inspectBitrix24CredentialsForVerifiedOAuthRpc: CredentialVerifiedOA
 export const replaceBitrix24CredentialsAfterVerifiedOAuthRpc: CredentialVerifiedOAuthReplaceTransport =
   async (arguments_) =>
     createPrivilegedClient().rpc("replace_bitrix24_credentials_after_verified_oauth", arguments_);
+
+export const listLauncherProjectsRpc: LauncherProjectRpcTransport<LauncherProjectListArguments> = async (
+  arguments_,
+) => createPrivilegedClient().rpc("list_launcher_projects", arguments_);
+export const saveLauncherProjectRpc: LauncherProjectRpcTransport<LauncherProjectSaveArguments> = async (
+  arguments_,
+) => createPrivilegedClient().rpc("save_launcher_project", arguments_);
+export const setLauncherProjectArchivedRpc: LauncherProjectRpcTransport<
+  LauncherProjectArchiveArguments
+> = async (arguments_) => createPrivilegedClient().rpc("set_launcher_project_archived", arguments_);

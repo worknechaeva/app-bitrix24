@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearRuntimeSubmissions, createTask } from "@/server/services/create-task";
 import type { TaskCreateRequest } from "@/features/tasks/schema";
 
+const administrator = { profileId: "mock-admin", role: "administrator" as const };
+const editor = { profileId: "mock-editor", role: "editor" as const };
+
 function input(overrides: Partial<TaskCreateRequest> = {}): TaskCreateRequest {
   return {
     idempotencyKey: crypto.randomUUID(),
@@ -23,23 +26,29 @@ describe("createTask service", () => {
 
   it("returns the same successful task for duplicate requests", async () => {
     const values = input();
-    const [first, duplicate] = await Promise.all([createTask(values), createTask(values)]);
+    const [first, duplicate] = await Promise.all([
+      createTask(values, administrator),
+      createTask(values, administrator),
+    ]);
     expect(first.status).toBe("success");
     expect(duplicate).toEqual(first);
   });
 
   it("does not retry an unknown timeout", async () => {
     const values = input({ mockScenario: "timeout" });
-    const first = await createTask(values);
-    const duplicate = await createTask(values);
+    const first = await createTask(values, administrator);
+    const duplicate = await createTask(values, administrator);
     expect(first.status).toBe("unknown");
     expect(duplicate.status).toBe("unknown");
     expect(duplicate).toEqual(first);
   });
 
   it("allows a conscious retry with a new idempotency key", async () => {
-    const first = await createTask(input({ mockScenario: "timeout" }));
-    const retry = await createTask(input({ idempotencyKey: crypto.randomUUID(), mockScenario: "success" }));
+    const first = await createTask(input({ mockScenario: "timeout" }), administrator);
+    const retry = await createTask(
+      input({ idempotencyKey: crypto.randomUUID(), mockScenario: "success" }),
+      administrator,
+    );
     expect(first.status).toBe("unknown");
     expect(retry.status).toBe("success");
   });
@@ -50,6 +59,7 @@ describe("createTask service", () => {
         deadline: "",
         files: [{ name: "brief.pdf", size: 2048, type: "application/pdf" }],
       }),
+      administrator,
     );
     expect(result.status).toBe("success");
     if (result.status !== "success") return;
@@ -64,7 +74,7 @@ describe("createTask service", () => {
   });
 
   it("returns a safe message for an integration error", async () => {
-    const result = await createTask(input({ mockScenario: "error" }));
+    const result = await createTask(input({ mockScenario: "error" }), administrator);
     expect(result).toEqual({ status: "error", message: "Не удалось создать задачу. Попробуйте позже." });
   });
 
@@ -75,7 +85,7 @@ describe("createTask service", () => {
       ...input({ mockScenario: "success" }),
       runtimeMode: "development",
     } as TaskCreateRequest;
-    const result = await createTask(untrustedInput);
+    const result = await createTask(untrustedInput, administrator);
 
     expect(result).toEqual({
       status: "error",
@@ -85,5 +95,25 @@ describe("createTask service", () => {
     expect(result.status).not.toBe("success");
     expect(result).not.toHaveProperty("submission");
     expect(result).not.toHaveProperty("bitrixTaskId");
+  });
+
+  it("does not disclose a cached or in-flight submission to another actor", async () => {
+    const completedInput = input();
+    expect((await createTask(completedInput, administrator)).status).toBe("success");
+    await expect(createTask(completedInput, editor)).resolves.toEqual({
+      status: "error",
+      message: "Не удалось создать задачу. Попробуйте позже.",
+    });
+
+    const inFlightInput = input();
+    const [ownerResult, otherResult] = await Promise.all([
+      createTask(inFlightInput, administrator),
+      createTask(inFlightInput, editor),
+    ]);
+    expect(ownerResult.status).toBe("success");
+    expect(otherResult).toEqual({
+      status: "error",
+      message: "Не удалось создать задачу. Попробуйте позже.",
+    });
   });
 });

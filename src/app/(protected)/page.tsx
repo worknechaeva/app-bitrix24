@@ -6,12 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { listSubmissions } from "@/server/services/create-task";
 import { getProjectRepository } from "@/server/repositories/mock-project-repository";
+import { requireApplicationSession } from "@/server/auth/application-session";
+import { LiveAuthPlaceholder } from "@/components/app-shell/live-auth-placeholder";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  const session = await requireApplicationSession();
+  if (session.mode === "live") return <LiveAuthPlaceholder />;
   const recent = listSubmissions().slice(0, 3);
-  const projects = (await getProjectRepository().listActive()).slice(0, 3);
+  const projects = (
+    await getProjectRepository().listVisible({
+      profileId: session.profileId ?? (session.role === "administrator" ? "mock-admin" : "mock-editor"),
+      role: session.role,
+    })
+  )
+    .filter((project) => !project.archived)
+    .slice(0, 3);
 
   return (
     <>

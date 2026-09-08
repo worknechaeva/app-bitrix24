@@ -2,7 +2,7 @@
 
 Документ фиксирует устойчивые технические решения и утвержденную целевую архитектуру Milestone 2. Детали требуемого поведения находятся в [product/current-scope.md](./product/current-scope.md), решения и их история — в [product/decisions.md](./product/decisions.md), этапы реализации — в [roadmap.md](./roadmap.md).
 
-Текущий код реализует завершенный development-only mock первого milestone, development/test harness завершенного OAuth и portal identity spike, live production-safe IdentityClient, локальный production OAuth authentication contour и administrator/profile lifecycle поверх persistent `portal_installations`/`profiles`/`oauth_transactions`/`app_sessions`/`bitrix24_user_credentials` slices, а также production Directory adapter по документированным и read-only live verified Bitrix24 REST contracts. Remote Supabase schema и deployment не изменялись; persistent business data не подключены.
+Текущий код реализует завершенный development-only mock первого milestone, production OAuth authentication contour и administrator/profile lifecycle поверх persistent foundation, production Directory adapter и персональные persistent `launcher_projects` с архивным аудитом. Remote Supabase schema и deployment не изменялись; persistent submissions не подключены.
 
 ## Приложение
 
@@ -74,7 +74,7 @@ UI
 - При `is_active=false` отзываются все активные app sessions, использование OAuth credentials запрещается и новые Bitrix24 Identity, Directory и Task вызовы от имени profile не выполняются; история submissions и launcher projects сохраняются.
 - Повторное разрешение credentials не происходит автоматически без новой проверки identity и утвержденного recovery/reactivation flow; полный recovery flow пока не проектируется.
 - Транзакционные `change_profile_role` и `block_profile` RPC повторно разрешают active administrator из app session и запрещают понижение или блокировку последнего active administrator. Portal singleton row является portal-scoped serialization lock для всех bootstrap/role/block mutations, поэтому adversarial mutual demote/block race сохраняет минимум одного active administrator.
-- `block_profile` сохраняет общий порядок locks с credentials operations: блокирует credential row до target profile, повторно проверяет возможную concurrent insert и одной транзакцией устанавливает `is_active=false`, отзывает пригодные app sessions и переводит credentials в `disabled`. Session creation, прошедшая первой, затем отзывается; более поздняя creation видит inactive profile. Credential rotation, прошедшая первой, затем отключается; более поздняя видит inactive/disabled state.
+- `block_profile` сохраняет общий порядок locks с credentials operations: блокирует credential row до target profile, повторно проверяет возможную concurrent insert и одной транзакцией устанавливает `is_active=false`, отзывает пригодные app sessions и переводит credentials в `disabled`. Portal serialization использует `FOR NO KEY UPDATE`, поэтому FK-проверки concurrent session/credential insert могут завершиться без lock-cycle; block затем отзывает созданные права. Session creation, прошедшая первой, затем отзывается; более поздняя creation видит inactive profile. Credential rotation, прошедшая первой, затем отключается; более поздняя видит inactive/disabled state.
 - Первый administrator задается необязательным `BOOTSTRAP_ADMIN_BITRIX_USER_ID`, лениво валидируется и назначается matching profile только после проверки `member_id`, `ACTIVE` и `USER_TYPE`. Bootstrap сериализуется на portal row, выполняется только при отсутствии active administrator и фиксируется в `admin_bootstrapped_at`; наличие другого administrator завершает bootstrap без автоматического повышения matching editor.
 - Unblock отсутствует: текущая schema не хранит provenance причины `disabled`, поэтому old credentials никогда не включаются автоматически и recovery требует отдельного утвержденного flow.
 
@@ -88,6 +88,7 @@ UI
 - Initial create блокирует profile, повторно проверяет active employee snapshots, устанавливает `active` и `token_version=1` database-side и не выполняет upsert существующей row.
 - Resolve repository возвращает encrypted envelopes только для актуального active profile и credentials status `active`; service расшифровывает pair только в server memory. `profile_inactive`, `reauth_required` и `disabled` не раскрывают encrypted fields и fail closed.
 - Rotation блокирует credentials row и profile и одной RPC заменяет всю encrypted pair, endpoint и expiry только при совпадении `expected_token_version`; новый ciphertext использует AAD следующей версии. Version conflict ничего не изменяет.
+- Verified OAuth replacement сериализует первичную запись одной profile transaction advisory lock по portal/profile. Это сохраняет единственную credential row и возвращает конкурентным проигравшим `version_conflict` без deadlock; profile row блокируется в режиме, совместимом с FK-проверкой insert.
 - `mark_bitrix24_credentials_reauth_required` требует ту же optimistic version. Stale refresh failure старой версии после успешной rotation получает `version_conflict` и не блокирует новую pair. `disabled` не реактивируется; general-purpose disable/enable и re-auth recovery отсутствуют.
 - Production callback использует отдельные inspection/replacement RPC для verified OAuth login. Inspection возвращает только current/next version context; replacement атомарно создает version 1 или заменяет полную encrypted pair на `N+1`, включая переход `reauth_required -> active`. `disabled` не реактивируется. Provider refresh orchestration и удаленная Supabase schema не изменены.
 
@@ -102,7 +103,7 @@ UI
 - Privileged gateway не экспортирует сырой database client или универсальный query builder.
 - Cross-portal связи дополнительно блокируются composite foreign keys с `portal_installation_id`.
 
-Privileged gateway реализован для узких операций `portal_installations`, `profiles`, administrator/profile lifecycle, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
+Privileged gateway реализован для узких операций `portal_installations`, `profiles`, administrator/profile lifecycle, `oauth_transactions`, `app_sessions`, `bitrix24_user_credentials` и `launcher_projects`: он создает `@supabase/supabase-js` client только внутри server-only модуля с `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` и отключенной browser session persistence. В local Supabase config GoTrue включен только для выдачи стандартных test API keys; приложение не создает Supabase Auth sessions и не использует Auth. Таблицы имеют RLS без policies. `PUBLIC`, `anon` и `authenticated` не имеют прав на таблицы и RPC; `service_role` имеет только необходимые table privileges и `EXECUTE` на `SECURITY INVOKER` RPC с пустым `search_path`.
 
 Live authentication configuration (`TASK_LAUNCHER_APP_ORIGIN`, OAuth client credentials, portal identity, credentials encryption key и Supabase privileged configuration) разрешается лениво только на runtime boundaries. Callback URI вычисляется из app origin, OAuth token endpoint не переопределяется environment. Production build не требует runtime secrets; фактический live request без valid configuration завершается fail closed.
 
@@ -193,12 +194,19 @@ Credentials не хранятся в profiles. Encryption key находится
 - Физического удаления нет.
 - Unique только по `bitrix_entity_id` запрещен; один owner может иметь несколько локальных настроек одной Bitrix-сущности.
 - Архивирование не изменяет Bitrix; восстановление фиксируется append-only audit event.
+- Project mutation RPC блокируют singleton portal row до повторной проверки session и profile, поэтому они сериализованы с административной блокировкой profile.
+- UI отправляет только выбранные ID; server-side Directory перед сохранением повторно получает допустимые entity и active employee и сохраняет их проверенные snapshots.
+- Directory composition создается лениво: чтение и archive/restore launcher projects не зависят от доступности credentials или Bitrix24. Истекшие credentials возвращают отдельное состояние повторного OAuth-входа.
+- Черновик формы после Directory authentication failure хранится в `sessionStorage` не более 15 минут, содержит profile и launcher project identity и восстанавливается только для того же actor и той же create/edit операции.
+- Для create форма генерирует UUID операции и сохраняет его с черновиком до подтвержденного ответа. PostgreSQL хранит ключ в `launcher_projects`, обеспечивает его уникальность в пределах portal/owner и после актуальной проверки app session возвращает существующий проект только при совпадении пользовательских полей запроса.
+- Результат project mutation отделен от последующего чтения списка: подтвержденная запись остается success, а отдельная read failure включает безопасное действие повторной загрузки списка без повторной мутации.
 
 ## Submissions, статусы и файлы
 
 - Каждая явная попытка создает отдельную `task_submissions` и новый idempotency key.
 - `operation_status` принимает `pending`, `success`, `error`, `unknown`.
 - Timeout дает `unknown`; автоматический retry запрещен; ручной retry является новой попыткой.
+- В development/test runtime cache по idempotency key дополнительно связан с actor profile, поэтому чужой actor не может получить cached или in-flight результат.
 - Editor читает собственную историю, administrator — общую.
 - Success, `bitrix_task_id` и sync fields изменяет только server-only integration layer.
 - UI-модель `TaskStatus` остается `new`, `in_progress`, `completed`, `unknown`.

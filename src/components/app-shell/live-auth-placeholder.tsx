@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { CheckCircle2, LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function LiveAuthPlaceholder() {
@@ -13,10 +15,12 @@ export function LiveAuthPlaceholder() {
         </CardHeader>
         <CardContent className="text-muted-foreground flex gap-3 text-sm">
           <LockKeyhole className="mt-0.5 size-4 shrink-0" />
-          <p>
-            Рабочие справочники и создание задач еще не подключены в текущем Milestone 2. Mock-данные в
-            live-режиме не отображаются.
-          </p>
+          <p>Этот раздел еще не подключен к постоянным данным. Проекты уже доступны в live-режиме.</p>
+        </CardContent>
+        <CardContent>
+          <Button asChild>
+            <Link href="/projects">Открыть проекты</Link>
+          </Button>
         </CardContent>
       </Card>
     </div>

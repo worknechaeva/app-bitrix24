@@ -8,6 +8,7 @@ import { taskCreateRequestSchema, type TaskCreateRequest } from "@/features/task
 import type { TaskFileMetadata } from "@/features/tasks/files";
 import type { TaskStatus } from "@/features/tasks/task-status";
 import { getProjectRepository } from "@/server/repositories/mock-project-repository";
+import type { ProjectActor } from "@/features/projects/schema";
 
 export type SubmissionStatus = "success" | "error" | "unknown";
 
@@ -47,8 +48,11 @@ export type CreateTaskOutcome =
     }
   | { status: "unknown"; submission: SubmissionRecord; message: string };
 
-const submissions = new Map<string, SubmissionRecord>();
-const pending = new Map<string, Promise<CreateTaskOutcome>>();
+type ActorBoundSubmission = { actorProfileId: string; submission: SubmissionRecord };
+type ActorBoundPending = { actorProfileId: string; operation: Promise<CreateTaskOutcome> };
+
+const submissions = new Map<string, ActorBoundSubmission>();
+const pending = new Map<string, ActorBoundPending>();
 
 function parseTags(requiredTag: string, value: string) {
   const tags = [requiredTag, ...value.split(",")].map((tag) => tag.trim()).filter(Boolean);
@@ -64,7 +68,7 @@ function validationErrors(error: ReturnType<typeof taskCreateRequestSchema.safeP
   return error.error.flatten().fieldErrors as Record<string, string[]>;
 }
 
-export async function createTask(input: TaskCreateRequest): Promise<CreateTaskOutcome> {
+export async function createTask(input: TaskCreateRequest, actor: ProjectActor): Promise<CreateTaskOutcome> {
   const parsed = taskCreateRequestSchema.safeParse(input);
   if (!parsed.success) {
     return { status: "error", message: "Проверьте заполненные поля", fieldErrors: validationErrors(parsed) };
@@ -72,16 +76,28 @@ export async function createTask(input: TaskCreateRequest): Promise<CreateTaskOu
 
   const existing = submissions.get(parsed.data.idempotencyKey);
   if (existing) {
-    return existing.operationStatus === "unknown"
-      ? { status: "unknown", submission: existing, message: existing.message ?? "Статус неизвестен" }
-      : { status: "success", submission: existing };
+    if (existing.actorProfileId !== actor.profileId) {
+      return { status: "error", message: "Не удалось создать задачу. Попробуйте позже." };
+    }
+    return existing.submission.operationStatus === "unknown"
+      ? {
+          status: "unknown",
+          submission: existing.submission,
+          message: existing.submission.message ?? "Статус неизвестен",
+        }
+      : { status: "success", submission: existing.submission };
   }
 
   const inFlight = pending.get(parsed.data.idempotencyKey);
-  if (inFlight) return inFlight;
+  if (inFlight) {
+    if (inFlight.actorProfileId !== actor.profileId) {
+      return { status: "error", message: "Не удалось создать задачу. Попробуйте позже." };
+    }
+    return inFlight.operation;
+  }
 
-  const operation = executeCreate(parsed.data);
-  pending.set(parsed.data.idempotencyKey, operation);
+  const operation = executeCreate(parsed.data, actor);
+  pending.set(parsed.data.idempotencyKey, { actorProfileId: actor.profileId, operation });
   try {
     return await operation;
   } finally {
@@ -89,9 +105,9 @@ export async function createTask(input: TaskCreateRequest): Promise<CreateTaskOu
   }
 }
 
-async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome> {
-  const project = await getProjectRepository().findById(data.projectId);
-  if (project && !project.active) return { status: "error", message: "Выбранный проект недоступен" };
+async function executeCreate(data: TaskCreateRequest, actor: ProjectActor): Promise<CreateTaskOutcome> {
+  const project = await getProjectRepository().findAccessible(actor, data.projectId);
+  if (project && project.archived) return { status: "error", message: "Выбранный проект недоступен" };
   if (!project) return { status: "error", message: "Выбранный проект недоступен" };
 
   const responsibleId =
@@ -103,7 +119,7 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
     title: data.title.trim(),
     description: data.description.trim() || undefined,
     responsibleId,
-    groupId: project.bitrixGroupId,
+    groupId: project.bitrixEntityId,
     deadline: toDeadline(data.deadline),
     tags: parseTags(project.requiredTag, data.additionalTags),
     files: data.files.map((file) => ({ ...file })),
@@ -144,7 +160,7 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
       files: data.files.map((file) => ({ ...file })),
       requestPayloadSanitized: sanitizedPayload,
     };
-    submissions.set(data.idempotencyKey, submission);
+    submissions.set(data.idempotencyKey, { actorProfileId: actor.profileId, submission });
     return { status: "success", submission };
   } catch (error) {
     if (error instanceof Bitrix24Error && error.code === "BITRIX_TIMEOUT") {
@@ -163,7 +179,7 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
         files: data.files.map((file) => ({ ...file })),
         requestPayloadSanitized: sanitizedPayload,
       };
-      submissions.set(data.idempotencyKey, submission);
+      submissions.set(data.idempotencyKey, { actorProfileId: actor.profileId, submission });
       return { status: "unknown", submission, message: submission.message! };
     }
     return { status: "error", message: "Не удалось создать задачу. Попробуйте позже." };
@@ -172,7 +188,7 @@ async function executeCreate(data: TaskCreateRequest): Promise<CreateTaskOutcome
 
 export function listSubmissions(): SubmissionRecord[] {
   return [
-    ...Array.from(submissions.values()),
+    ...Array.from(submissions.values(), ({ submission }) => submission),
     ...SEEDED_SUBMISSIONS.map((item) => ({
       ...item,
       idempotencyKey: item.id,

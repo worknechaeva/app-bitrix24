@@ -6,10 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EMPLOYEES } from "@/server/fixtures";
+import { requireApplicationSession } from "@/server/auth/application-session";
+import { LiveAuthPlaceholder } from "@/components/app-shell/live-auth-placeholder";
 
 export const dynamic = "force-dynamic";
 
-export default function BitrixSettingsPage() {
+export default async function BitrixSettingsPage() {
+  const session = await requireApplicationSession();
+  if (session.mode === "live") return <LiveAuthPlaceholder />;
   const employees = EMPLOYEES;
   const connection = { accountName: "Демо-портал Bitrix24" };
   const user = { name: "Webhook Demo" };

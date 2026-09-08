@@ -230,7 +230,7 @@ export function TaskForm({
             {selectedProject ? (
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge variant="secondary">{selectedProject.requiredTag}</Badge>
-                <Badge variant="outline">{selectedProject.bitrixGroupName}</Badge>
+                <Badge variant="outline">{selectedProject.bitrixEntityTitle}</Badge>
               </div>
             ) : null}
           </div>

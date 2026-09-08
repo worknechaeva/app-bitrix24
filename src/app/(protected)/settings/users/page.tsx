@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MOCK_USERS } from "@/server/fixtures";
 import { requireMockSession } from "@/server/auth/mock-session";
+import { requireApplicationSession } from "@/server/auth/application-session";
+import { LiveAuthPlaceholder } from "@/components/app-shell/live-auth-placeholder";
 
 export default async function UsersSettingsPage() {
+  const applicationSession = await requireApplicationSession();
+  if (applicationSession.mode === "live") return <LiveAuthPlaceholder />;
   const session = await requireMockSession();
   return (
     <>

@@ -2,8 +2,10 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function login(page: Page, role: "admin" | "editor" = "admin") {
   await page.goto("/login");
-  await page.getByTestId(`login-${role}`).click();
-  await expect(page).toHaveURL(/\/tasks\/new$/);
+  await Promise.all([
+    page.waitForURL(/\/tasks\/new$/, { waitUntil: "load", timeout: 45_000 }),
+    page.getByTestId(`login-${role}`).click(),
+  ]);
 }
 
 async function selectProject(page: Page, name = "Технарост") {
@@ -195,9 +197,11 @@ test("administrator can create and edit a mock project", async ({ page }, testIn
   await page.getByRole("button", { name: "Добавить проект" }).click();
   await page.getByLabel("Название *").fill(initialName);
   await page.getByLabel("Адрес сайта").fill(`https://${suffix || "qa"}.example`);
-  await page.getByLabel("ID рабочей группы Bitrix24 *").fill("901");
-  await page.getByLabel("Название рабочей группы *").fill("QA группа");
+  await page.getByRole("combobox", { name: "Проект Bitrix24", exact: true }).click();
+  await page.getByRole("option", { name: /Разработка CMS/ }).click();
   await page.getByLabel("Обязательный тег *").fill(`${suffix || "qa"}.example`);
+  await page.getByRole("combobox", { name: "Ответственный по умолчанию", exact: true }).click();
+  await page.getByRole("option", { name: /Волкова Анна/ }).click();
   await page.getByTestId("project-form").getByRole("button", { name: "Добавить проект" }).click();
   await expect(page.getByText("Проект добавлен")).toBeVisible();
 
@@ -209,13 +213,57 @@ test("administrator can create and edit a mock project", async ({ page }, testIn
   await expect(page.getByText(editedName, { exact: true })).toBeVisible();
 });
 
-test("editor cannot manage projects", async ({ page }) => {
+test("editor manages own projects and cannot edit another owner", async ({ page }, testInfo) => {
   await login(page, "editor");
   await page.goto("/projects");
-  await expect(page.getByRole("button", { name: "Добавить проект" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Редактировать" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: /Выключить|Включить/ })).toHaveCount(0);
-  await expect(page.getByText("Архивный проект")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Добавить проект" })).toBeVisible();
+  const suffix = testInfo.project.name.replaceAll(/[^a-z]/g, "");
+  const name = `Проект редактора ${suffix}`;
+  await page.getByRole("button", { name: "Добавить проект" }).click();
+  await page.getByLabel("Название *").fill(name);
+  await page.getByRole("combobox", { name: "Проект Bitrix24", exact: true }).click();
+  await page.getByRole("option", { name: /Внутренние задачи/ }).click();
+  await page.getByLabel("Обязательный тег *").fill(`editor-${suffix}`);
+  await page.getByRole("combobox", { name: "Ответственный по умолчанию", exact: true }).click();
+  await page.getByRole("option", { name: /Соколова Ирина/ }).click();
+  await page.getByTestId("project-form").getByRole("button", { name: "Добавить проект" }).click();
+  const ownCard = page.locator("[data-slot=card]", { hasText: name }).first();
+  await expect(ownCard.getByRole("button", { name: "Редактировать" })).toBeVisible();
+  await expect(page.getByText("Технарост")).toHaveCount(0);
+  await ownCard.getByRole("button", { name: "В архив" }).click();
+  await page.getByLabel("Показать проекты").click();
+  await page.getByRole("option", { name: "Архив" }).click();
+  await expect(page.getByText(name, { exact: true })).toBeVisible();
+});
+
+test("OAuth draft reopens the same project edit operation", async ({ page }) => {
+  await login(page, "editor");
+  await page.goto("/projects");
+  await page.getByRole("button", { name: "Добавить проект" }).click();
+  await expect(page.getByTestId("project-form")).toBeVisible();
+  await page.getByRole("button", { name: "Отмена" }).click();
+  await page.evaluate(() => {
+    sessionStorage.setItem(
+      "task-launcher-project-draft:v2",
+      JSON.stringify({
+        actorProfileId: "mock-editor",
+        projectId: "forma",
+        creationOperationKey: null,
+        name: "Черновик после OAuth",
+        websiteUrl: "https://draft.example",
+        requiredTag: "draft.example",
+        bitrixEntityId: "77",
+        defaultResponsibleId: "102",
+        savedAt: Date.now(),
+      }),
+    );
+  });
+  await page.reload();
+
+  await expect(page.getByText("Редактировать «Форма»")).toBeVisible();
+  await expect(page.getByLabel("Название *")).toHaveValue("Черновик после OAuth");
+  await expect(page.getByLabel("Адрес сайта")).toHaveValue("https://draft.example");
+  await expect(page.getByLabel("Обязательный тег *")).toHaveValue("draft.example");
 });
 
 test("dashboard has no greeting and keeps the all-tasks link aligned", async ({ page }) => {
