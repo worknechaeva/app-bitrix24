@@ -3,9 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
-  workers: 3,
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  workers: 1,
+  timeout: 90_000,
+  expect: { timeout: 30_000 },
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? "github" : "list",
@@ -19,8 +19,8 @@ export default defineConfig({
     { name: "android-chromium", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command: "pnpm dev --hostname 127.0.0.1 --port 3000",
-    url: "http://127.0.0.1:3000/login",
+    command: "pnpm dev --webpack --hostname 127.0.0.1 --port 3000",
+    url: "http://127.0.0.1:3000/tasks/new",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

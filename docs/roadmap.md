@@ -69,7 +69,7 @@ Migration каждого подсистемного этапа создаетс�
 - initial create, active resolve, атомарная rotation access/refresh token pair с `token_version`, отдельные `reauth_required`/`disabled` outcomes и защита stale refresh failure — реализованы локально с pgTAP и PostgreSQL concurrency coverage;
 - credentials foundation подключен к production OAuth callback через отдельные version-safe verified OAuth inspection/replacement RPC; реальный automatic provider refresh и удаленная schema не подключены;
 - live `Bitrix24IdentityClient`, production OAuth start/callback/install receipt, проверка `app`/`user_brief`, portal/profile reconciliation, session rotation и secure cookie — реализованы локально;
-- live protected runtime показывает fail-closed placeholder до подключения persistent launcher projects/Directory/submissions и не отображает mock business data;
+- live protected runtime открывает persistent launcher projects/Directory; остальные business-страницы до submissions и live task creation показывают fail-closed placeholder и не отображают mock data;
 - revocation одной session, browser logout и транзакционный revoke-all при блокировке profile реализованы; cleanup и recovery/reactivation credentials остаются будущими задачами.
 
 ### 6. Directory clients
@@ -79,24 +79,24 @@ Migration каждого подсистемного этапа создаетс�
 - server-side bounded pagination, duplicate/cursor guards, runtime validation и минимальные DTO — реализованы;
 - active employee через `user.get`/`user.search` с `user_brief` — реализован и покрыт synthetic contract tests; `user.get` list path live verified, optional `user.search` live не требовался;
 - group/project/scrum, collab/extranet/status exclusion и `create_tasks` capability — реализованы fail closed, покрыты synthetic contract tests и read-only live verified с `socialnetwork`/`sonet_group`;
-- повторная проверка Bitrix permissions перед сохранением справочной связи остается частью launcher projects slice.
+- повторная проверка Bitrix entity capability и active employee перед сохранением launcher project реализована.
 
 ### 7. Персональные launcher projects
 
-- owner для каждой локальной настройки;
-- editor видит свои, administrator — все;
-- owner изменяет собственные настройки;
-- administrator архивирует/восстанавливает чужие только узкой RPC;
-- append-only audit и отсутствие физического удаления;
-- несколько локальных записей для одной Bitrix-сущности.
+- реализованы локально: owner для каждой настройки, editor видит свои, administrator — все;
+- owner изменяет собственные настройки; administrator архивирует/восстанавливает чужие узкой RPC;
+- append-only audit, отсутствие физического удаления и несколько настроек одной Bitrix-сущности;
+- live UI использует persistent repository и server-side Directory; mock следует тем же правилам владения.
+- создание защищено owner-scoped UUID операции от дублей при потерянном ответе; измененный payload с тем же ключом отклоняется;
+- подтвержденная мутация и обновление списка имеют независимые результаты, а сетевые ошибки не оставляют форму заблокированной.
 
 ### 8. Authorization и PostgreSQL RPC
 
 - app session и server-only DAL как источник actor identity;
-- actor-aware repositories;
-- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`, остальные таблицы остаются будущими;
+- actor-aware repositories, включая `launcher_projects`;
+- RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, `bitrix24_user_credentials`, `launcher_projects` и их audit events;
 - service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`;
-- транзакционные RPC для bootstrap/ролей/profile block и sessions реализованы; archive/restore остается будущим, token rotation реализован;
+- транзакционные RPC для bootstrap/ролей/profile block, sessions и archive/restore проектов реализованы; token rotation реализован;
 - adversarial regression-тесты actor authorization, last-admin и block/session/credential races реализованы для profile lifecycle.
 
 ### 9. Persistent submissions history

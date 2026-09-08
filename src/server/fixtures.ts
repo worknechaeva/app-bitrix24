@@ -7,36 +7,53 @@ export const EMPLOYEES = [
   { id: "103", name: "Ирина Соколова", position: "Backend-разработчик", active: true },
 ] as const;
 
+export const TASK_ENTITIES = [
+  { id: "77", title: "Разработка CMS", type: "project" as const },
+  { id: "88", title: "Внутренние задачи", type: "group" as const },
+];
+
 export const INITIAL_PROJECTS: Project[] = [
   {
     id: "technarost",
     name: "Технарост",
     websiteUrl: "https://technarost.ru",
-    bitrixGroupId: "77",
-    bitrixGroupName: "Разработка CMS",
+    bitrixEntityId: "77",
+    bitrixEntityTitle: "Разработка CMS",
+    bitrixEntityType: "project",
     requiredTag: "technarost.ru",
     defaultResponsibleId: "101",
-    active: true,
+    ownerProfileId: "mock-admin",
+    archived: false,
+    canEdit: true,
+    canArchive: true,
   },
   {
     id: "forma",
     name: "Форма",
     websiteUrl: "https://forma.example",
-    bitrixGroupId: "77",
-    bitrixGroupName: "Разработка CMS",
+    bitrixEntityId: "77",
+    bitrixEntityTitle: "Разработка CMS",
+    bitrixEntityType: "project",
     requiredTag: "forma.example",
     defaultResponsibleId: "102",
-    active: true,
+    ownerProfileId: "mock-editor",
+    archived: false,
+    canEdit: true,
+    canArchive: true,
   },
   {
     id: "archive",
     name: "Архивный проект",
     websiteUrl: "https://archive.example",
-    bitrixGroupId: "77",
-    bitrixGroupName: "Разработка CMS",
+    bitrixEntityId: "77",
+    bitrixEntityTitle: "Разработка CMS",
+    bitrixEntityType: "project",
     requiredTag: "archive.example",
     defaultResponsibleId: "103",
-    active: false,
+    ownerProfileId: "mock-editor",
+    archived: true,
+    canEdit: true,
+    canArchive: true,
   },
 ];
 

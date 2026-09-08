@@ -6,7 +6,7 @@ import { taskFileStore, TaskFileValidationError } from "@/server/files/task-file
 import { taskCreateRequestSchema } from "./schema";
 
 export async function createTaskAction(formData: FormData): Promise<CreateTaskOutcome> {
-  await requireMockSession();
+  const session = await requireMockSession();
   let metadata;
   try {
     const files = formData.getAll("files").map((value) => {
@@ -39,5 +39,8 @@ export async function createTaskAction(formData: FormData): Promise<CreateTaskOu
       fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
     };
   }
-  return createTask(parsed.data);
+  return createTask(parsed.data, {
+    profileId: session.id,
+    role: session.role === "admin" ? "administrator" : "editor",
+  });
 }

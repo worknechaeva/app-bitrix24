@@ -337,3 +337,59 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Связанное продуктовое решение:** DEC-029.
 - **Связанный тест:** `tests/integration/oauth-spike-routes.test.ts` — callback validation, upstream failure, internal error и success scenarios.
 - **Коммит исправления:** —
+
+## QA-021 — Mock-проекты не соответствовали постоянной модели ownership
+
+- **Дата обнаружения:** 2026-09-08
+- **Источник:** сверка Milestone 2 с интерфейсом
+- **Устройство или браузер:** desktop Chromium, iPhone WebKit, Android Chromium и server integration
+- **Экран:** проекты
+- **Описание:** прежний mock разрешал мутации только administrator и хранил ручные snapshots группы, тогда как утвержденная модель требует персонального владельца и server-side Directory.
+- **Ожидаемый результат:** editor управляет своими настройками, administrator видит все и архивирует чужие без их редактирования; live сохраняет только повторно проверенные Directory snapshots.
+- **Приоритет:** High
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-025, DEC-027, DEC-037.
+- **Связанный тест:** `tests/integration/project-actions-authorization.test.ts`, `tests/unit/project-repository.test.ts`, `tests/e2e/task-flow.spec.ts`.
+- **Коммит исправления:** —
+
+## QA-022 — Повторный OAuth и runtime idempotency нарушали actor-контекст
+
+- **Дата обнаружения:** 2026-09-08
+- **Источник:** финальная сверка перед commit
+- **Устройство или браузер:** server integration, desktop Chromium, iPhone WebKit и Android Chromium
+- **Экран:** проекты и создание задачи
+- **Описание:** cached или in-flight mock submission возвращался по одному idempotency key без повторной проверки actor; OAuth-черновик редактирования терял project identity; при истекших Directory credentials страница не показывала действие повторного входа.
+- **Ожидаемый результат:** runtime submission связан с actor; черновик связан с profile и исходной create/edit операцией и автоматически открывается после OAuth; сохраненные проекты и архив остаются доступны, а страница предлагает повторный вход.
+- **Приоритет:** Critical
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-013, DEC-025, DEC-035, DEC-037.
+- **Связанный тест:** `tests/integration/create-task.test.ts` — `does not disclose a cached or in-flight submission to another actor`; `tests/integration/project-page-data.test.ts`; `tests/unit/project-draft.test.ts`; `tests/unit/project-management.test.tsx`.
+- **Коммит исправления:** —
+
+## QA-023 — Сбой запроса блокировал форму и мог спровоцировать дубль проекта
+
+- **Дата обнаружения:** 2026-09-08
+- **Источник:** финальная сверка перед commit
+- **Устройство или браузер:** client component, server integration и PostgreSQL concurrency
+- **Экран:** проекты
+- **Описание:** отклоненный Server Action не сбрасывал pending; успешная мутация с ошибкой последующего чтения показывалась как неуспешное сохранение, а повтор create не имел постоянного ключа операции.
+- **Ожидаемый результат:** форма всегда разблокируется и сохраняет значения; подтвержденная мутация остается success; список обновляется отдельным действием; повтор с тем же actor, ключом и payload возвращает одну запись.
+- **Приоритет:** Critical
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-025, DEC-038.
+- **Связанный тест:** `tests/unit/project-management.test.tsx` — transport failure, сохранение полей, повтор ключа и обновление списка; `tests/integration/project-page-data.test.ts` — независимые mutation/list outcomes; `tests/unit/project-repository.test.ts` и `tests/database/launcher-projects.database.test.ts` — idempotent replay, payload conflict, actor и concurrency.
+- **Коммит исправления:** —
+
+## QA-024 — Concurrency credentials и profile block образовывала database deadlock
+
+- **Дата обнаружения:** 2026-09-09
+- **Источник:** полный локальный PostgreSQL integration прогон перед commit
+- **Устройство или браузер:** PostgreSQL 17 / Supabase local stack
+- **Экран:** server-only OAuth credentials и administrator profile lifecycle
+- **Описание:** шестнадцать одновременных первичных verified OAuth replacement ожидали один profile row lock и могли войти в lock-cycle с FK-проверкой insert; `block_profile` также удерживал слишком сильный portal row lock во время гонки с session creation.
+- **Ожидаемый результат:** один первичный replacement создает credential row, остальные получают `version_conflict`; block и concurrent session/credential operations завершаются без storage error и после block не оставляют пригодных прав.
+- **Приоритет:** Critical
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-034, DEC-036.
+- **Связанный тест:** `tests/database/bitrix24-user-credentials.database.test.ts` — `creates one row during concurrent initial verified OAuth replacement`; `tests/database/profile-lifecycle.database.test.ts` — `blocks atomically and wins races with session creation and credential rotation`; `supabase/tests/database/bitrix24_user_credentials.test.sql` — advisory/profile lock assertions.
+- **Коммит исправления:** —

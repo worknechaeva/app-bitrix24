@@ -1,84 +1,75 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 const mockSession = vi.hoisted(() => ({ role: "editor" as "admin" | "editor" }));
 const revalidatePath = vi.hoisted(() => vi.fn());
-
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => (name === "task-launcher-mock-role" ? { value: mockSession.role } : undefined),
   }),
 }));
-
 vi.mock("next/cache", () => ({ revalidatePath }));
-
-import { saveProjectAction, setProjectActiveAction } from "@/features/projects/actions";
-import type { ProjectActionResult } from "@/features/projects/actions";
+import { saveProjectAction, setProjectArchivedAction } from "@/features/projects/actions";
 import { getProjectRepository, resetMockProjects } from "@/server/repositories/mock-project-repository";
-
-const newProject = {
+const input = {
   name: "Проект проверки прав",
   websiteUrl: "https://authorization.example",
-  bitrixGroupId: "919",
-  bitrixGroupName: "Проверка прав",
+  bitrixEntityId: "77",
   requiredTag: "authorization.example",
   defaultResponsibleId: "101",
-  active: true,
 };
-
-function expectSafeAuthorizationError(result: ProjectActionResult) {
-  expect(result).toEqual({
-    status: "error",
-    message: "Недостаточно прав для изменения проектов",
-  });
-  expect(JSON.stringify(result)).not.toMatch(/stack|trace|secret|token|webhook|cookie|repository|internal/i);
-}
-
+const createInput = { ...input, creationOperationKey: "11111111-1111-4111-8111-111111111111" };
+const editor = { profileId: "mock-editor", role: "editor" as const };
+const admin = { profileId: "mock-admin", role: "administrator" as const };
 describe("project Server Action authorization", () => {
   beforeEach(() => {
     resetMockProjects();
     mockSession.role = "editor";
     revalidatePath.mockClear();
   });
-
-  it("rejects direct editor calls to every project mutation without changing the repository", async () => {
+  it("allows an editor to manage own projects but not an administrator project", async () => {
+    expect((await saveProjectAction(createInput)).status).toBe("success");
     const repository = getProjectRepository();
-    const before = await repository.listAll();
-    const technarost = before.find((project) => project.id === "technarost")!;
-
-    const results = [
-      await saveProjectAction(newProject),
-      await saveProjectAction({ ...technarost, name: "Недоступное изменение" }),
-      await setProjectActiveAction("technarost", false),
-      await setProjectActiveAction("archive", true),
-    ];
-
-    results.forEach(expectSafeAuthorizationError);
-    expect(await repository.listAll()).toEqual(before);
-    expect(revalidatePath).not.toHaveBeenCalled();
+    const own = (await repository.listVisible(editor)).find((p) => p.name === input.name)!;
+    expect((await saveProjectAction({ ...input, id: own.id, name: "Своя настройка" })).status).toBe(
+      "success",
+    );
+    expect((await saveProjectAction({ ...input, id: "technarost" })).status).toBe("error");
+    expect((await setProjectArchivedAction("technarost", true)).status).toBe("error");
   });
 
-  it("allows an administrator to create update deactivate and reactivate a project", async () => {
-    mockSession.role = "admin";
+  it("rejects entity and employee identifiers that Directory did not verify", async () => {
     const repository = getProjectRepository();
+    const before = await repository.listVisible(editor);
+    expect((await saveProjectAction({ ...createInput, bitrixEntityId: "999" })).status).toBe("error");
+    expect((await saveProjectAction({ ...createInput, defaultResponsibleId: "999" })).status).toBe("error");
+    expect(await repository.listVisible(editor)).toEqual(before);
+  });
 
-    const createResult = await saveProjectAction(newProject);
-    expect(createResult.status).toBe("success");
-    const created = (await repository.listAll()).find((project) => project.name === newProject.name)!;
-
-    const updateResult = await saveProjectAction({
-      ...created,
-      name: "Проект с подтвержденными правами",
+  it("replays the same create operation without adding a duplicate", async () => {
+    const first = await saveProjectAction(createInput);
+    const second = await saveProjectAction(createInput);
+    expect(first.status).toBe("success");
+    expect(second.status).toBe("success");
+    expect(
+      (await getProjectRepository().listVisible(editor)).filter((project) => project.name === input.name),
+    ).toHaveLength(1);
+    expect(await saveProjectAction({ ...createInput, name: "Подмененный проект" })).toMatchObject({
+      status: "error",
     });
-    expect(updateResult.status).toBe("success");
-    expect((await repository.findById(created.id))?.name).toBe("Проект с подтвержденными правами");
-
-    const deactivateResult = await setProjectActiveAction(created.id, false);
-    expect(deactivateResult.status).toBe("success");
-    expect((await repository.findById(created.id))?.active).toBe(false);
-
-    const reactivateResult = await setProjectActiveAction(created.id, true);
-    expect(reactivateResult.status).toBe("success");
-    expect((await repository.findById(created.id))?.active).toBe(true);
+  });
+  it("keeps a confirmed save successful when cache revalidation fails", async () => {
+    revalidatePath.mockImplementationOnce(() => {
+      throw new Error("cache unavailable");
+    });
+    await expect(saveProjectAction(createInput)).resolves.toMatchObject({ status: "success" });
+    expect(
+      (await getProjectRepository().listVisible(editor)).filter((project) => project.name === input.name),
+    ).toHaveLength(1);
+  });
+  it("allows an administrator to archive another owner's project without editing it", async () => {
+    mockSession.role = "admin";
+    expect((await setProjectArchivedAction("forma", true)).status).toBe("success");
+    expect((await getProjectRepository().findAccessible(admin, "forma"))?.archived).toBe(true);
+    expect((await saveProjectAction({ ...input, id: "forma" })).status).toBe("error");
     expect(revalidatePath).toHaveBeenCalled();
   });
 });

@@ -230,6 +230,20 @@ select ok(not (select prosecdef from pg_proc where oid =
   'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)'::regprocedure),
   'replacement is security invoker'
 );
+select alike(
+  lower(pg_get_functiondef(
+    'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)'::regprocedure
+  )),
+  '%for no key update%',
+  'replacement uses a profile lock compatible with credential foreign-key checks'
+);
+select alike(
+  lower(pg_get_functiondef(
+    'public.replace_bitrix24_credentials_after_verified_oauth(smallint,uuid,bigint,bigint,text,text,text,text,text,text,smallint,text,timestamptz)'::regprocedure
+  )),
+  '%pg_advisory_xact_lock%',
+  'replacement serializes concurrent initial writes for one profile'
+);
 select ok(
   not has_function_privilege('anon', 'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)', 'execute')
   and not has_function_privilege('authenticated', 'public.inspect_bitrix24_credentials_for_verified_oauth(smallint,uuid)', 'execute')

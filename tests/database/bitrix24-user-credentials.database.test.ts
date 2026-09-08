@@ -47,10 +47,20 @@ async function setProfileInactive(profileId: string) {
 }
 
 async function setCredentialStatus(profileId: string, status: "disabled" | "reauth_required") {
+  const { data: credential, error: readError } = await serviceClient
+    .from("bitrix24_user_credentials")
+    .select("created_at, updated_at")
+    .eq("profile_id", profileId)
+    .single();
+  expect(readError).toBeNull();
+  if (!credential) throw new Error("Expected stored credentials");
+  const transitionAt = new Date(
+    Math.max(new Date(credential.created_at).getTime(), new Date(credential.updated_at).getTime()) + 1,
+  ).toISOString();
   const values =
     status === "reauth_required"
-      ? { status, reauth_required_at: new Date().toISOString(), updated_at: new Date().toISOString() }
-      : { status, reauth_required_at: null, updated_at: new Date().toISOString() };
+      ? { status, reauth_required_at: transitionAt, updated_at: transitionAt }
+      : { status, reauth_required_at: null, updated_at: transitionAt };
   const { error } = await serviceClient
     .from("bitrix24_user_credentials")
     .update(values)
