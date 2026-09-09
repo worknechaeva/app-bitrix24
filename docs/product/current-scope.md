@@ -168,11 +168,12 @@ Identity имеет live-реализацию. Production `Bitrix24DirectoryClie
 
 - Каждая явная попытка создает отдельную `task_submissions` и отдельный idempotency key.
 - Editor видит только собственную историю; administrator видит общую историю.
+- В development/test каждая seeded и runtime submission имеет явного автора попытки. Главная страница и `/submissions` получают actor только из проверенной server-side mock session и фильтруют историю до сортировки и ограничения блока последних задач.
 - Безопасные error-попытки сохраняются.
 - `operation_status` принимает только `pending`, `success`, `error` и `unknown`.
 - Timeout дает `unknown`; автоматический retry запрещен.
 - Ручной retry создает новую попытку и новый idempotency key.
-- В development/test runtime cache и незавершенная операция по idempotency key привязаны к текущему actor; другой actor не получает результат чужой попытки.
+- В development/test process-wide runtime cache и незавершенная операция по idempotency key разделяются между server bundles, но привязаны к текущему actor; другой actor не получает результат чужой попытки.
 - Success, `bitrix_task_id` и поля синхронизации может изменять только server-only integration layer.
 - `task_submission_files` хранит только безопасные metadata без бинарного содержимого и `content_sha256`.
 

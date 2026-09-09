@@ -188,6 +188,38 @@ test("history is compact, has domain statuses and filters by project", async ({ 
   await expect(page.getByText("Проверить форму обратной связи")).toHaveCount(0);
 });
 
+test("mock history is isolated for editor and shared with administrator", async ({ page }, testInfo) => {
+  const suffix = testInfo.project.name;
+  const editorTitle = `История редактора ${suffix}`;
+  const administratorTitle = `История администратора ${suffix}`;
+
+  await login(page, "editor");
+  await selectProject(page, "Форма");
+  await page.getByLabel("Название задачи *").fill(editorTitle);
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.getByText(editorTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText("Проверить форму обратной связи", { exact: true })).toHaveCount(0);
+  await page.goto("/submissions");
+  await expect(page.getByText(editorTitle, { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByText("Проверить форму обратной связи", { exact: true })).toHaveCount(0);
+
+  await login(page, "admin");
+  await selectProject(page, "Технарост");
+  await page.getByLabel("Название задачи *").fill(administratorTitle);
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
+
+  await page.goto("/");
+  await expect(page.getByText(editorTitle, { exact: true })).toBeVisible();
+  await expect(page.getByText(administratorTitle, { exact: true })).toBeVisible();
+  await page.goto("/submissions");
+  await expect(page.getByText(editorTitle, { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByText(administratorTitle, { exact: true }).filter({ visible: true })).toBeVisible();
+});
+
 test("administrator can create and edit a mock project", async ({ page }, testInfo) => {
   await login(page);
   await page.goto("/projects");

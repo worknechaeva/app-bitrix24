@@ -16,7 +16,7 @@ export default async function NewTaskPage({
   if (session.mode === "live") return <LiveAuthPlaceholder />;
   const projects = (
     await getProjectRepository().listVisible({
-      profileId: session.role === "administrator" ? "mock-admin" : "mock-editor",
+      profileId: session.profileId,
       role: session.role,
     })
   ).filter((project) => !project.archived);

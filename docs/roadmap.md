@@ -101,6 +101,7 @@ Migration каждого подсистемного этапа создаетс�
 
 ### 9. Persistent submissions history
 
+- development/test mock-контур чтения истории завершен: seeded/runtime попытки имеют автора, editor видит свои записи, administrator — общую историю, а обе страницы используют actor из server-side session;
 - таблицы `task_submissions` и `task_submission_files`;
 - отдельная запись на каждую явную попытку;
 - `pending/success/error/unknown`;

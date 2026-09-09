@@ -14,13 +14,9 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const session = await requireApplicationSession();
   if (session.mode === "live") return <LiveAuthPlaceholder />;
-  const recent = listSubmissions().slice(0, 3);
-  const projects = (
-    await getProjectRepository().listVisible({
-      profileId: session.profileId ?? (session.role === "administrator" ? "mock-admin" : "mock-editor"),
-      role: session.role,
-    })
-  )
+  const actor = { profileId: session.profileId, role: session.role };
+  const recent = listSubmissions(actor).slice(0, 3);
+  const projects = (await getProjectRepository().listVisible(actor))
     .filter((project) => !project.archived)
     .slice(0, 3);
 

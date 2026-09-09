@@ -15,7 +15,7 @@ export type ApplicationSession = {
   mode: "mock" | "live";
   name: string;
   role: ApplicationRole;
-  profileId?: string;
+  profileId: string;
   portalInstallationId?: number;
   expiresAt?: string;
 };
@@ -40,7 +40,12 @@ export async function getApplicationSession(): Promise<ApplicationSession | null
   if (getApplicationRuntimeMode() === "mock") {
     const mock = await getMockSession();
     return mock
-      ? { mode: "mock", name: mock.name, role: mock.role === "admin" ? "administrator" : "editor" }
+      ? {
+          mode: "mock",
+          name: mock.name,
+          role: mock.role === "admin" ? "administrator" : "editor",
+          profileId: mock.id,
+        }
       : null;
   }
 

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clearRuntimeSubmissions, createTask } from "@/server/services/create-task";
+import { clearRuntimeSubmissions, createTask, listSubmissions } from "@/server/services/create-task";
 import type { TaskCreateRequest } from "@/features/tasks/schema";
 
 const administrator = { profileId: "mock-admin", role: "administrator" as const };
 const editor = { profileId: "mock-editor", role: "editor" as const };
+const secondEditor = { profileId: "mock-editor-2", role: "editor" as const };
 
 function input(overrides: Partial<TaskCreateRequest> = {}): TaskCreateRequest {
   return {
@@ -115,5 +116,74 @@ describe("createTask service", () => {
       status: "error",
       message: "Не удалось создать задачу. Попробуйте позже.",
     });
+  });
+
+  it("lists seeded and concurrent runtime submissions only for their attempt actor", async () => {
+    const [administratorResult, editorResult] = await Promise.all([
+      createTask(input({ title: "Runtime администратора" }), administrator),
+      createTask(
+        input({
+          projectId: "forma",
+          title: "Runtime редактора с неизвестным статусом",
+          mockScenario: "timeout",
+        }),
+        editor,
+      ),
+    ]);
+    expect(administratorResult.status).toBe("success");
+    expect(editorResult.status).toBe("unknown");
+
+    const editorHistory = listSubmissions(editor);
+    expect(editorHistory.map(({ title }) => title)).toEqual(
+      expect.arrayContaining([
+        "Runtime редактора с неизвестным статусом",
+        "Обновить текст на главной странице",
+      ]),
+    );
+    expect(editorHistory.map(({ title }) => title)).not.toContain("Runtime администратора");
+    expect(editorHistory.map(({ title }) => title)).not.toContain("Проверить форму обратной связи");
+
+    const secondEditorHistory = listSubmissions(secondEditor);
+    expect(secondEditorHistory).toHaveLength(1);
+    expect(secondEditorHistory[0]).toMatchObject({
+      title: "Проверить неизвестный результат отправки",
+      projectId: "technarost",
+      operationStatus: "unknown",
+    });
+
+    const administratorHistory = listSubmissions(administrator);
+    expect(administratorHistory.map(({ title }) => title)).toEqual(
+      expect.arrayContaining([
+        "Runtime администратора",
+        "Runtime редактора с неизвестным статусом",
+        "Проверить форму обратной связи",
+        "Обновить текст на главной странице",
+        "Проверить неизвестный результат отправки",
+      ]),
+    );
+    expect(
+      administratorHistory
+        .map(({ createdAt }) => createdAt)
+        .toSorted()
+        .toReversed(),
+    ).toEqual(administratorHistory.map(({ createdAt }) => createdAt));
+  });
+
+  it("shares actor-bound runtime history across isolated server module instances", async () => {
+    const firstModule = await import("@/server/services/create-task");
+    const result = await firstModule.createTask(
+      input({ projectId: "forma", title: "Runtime между server bundles" }),
+      editor,
+    );
+    expect(result.status).toBe("success");
+
+    vi.resetModules();
+    const reloadedModule = await import("@/server/services/create-task");
+    expect(reloadedModule.listSubmissions(editor).map(({ title }) => title)).toContain(
+      "Runtime между server bundles",
+    );
+    expect(reloadedModule.listSubmissions(secondEditor).map(({ title }) => title)).not.toContain(
+      "Runtime между server bundles",
+    );
   });
 });

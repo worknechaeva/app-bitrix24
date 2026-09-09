@@ -59,6 +59,7 @@ export const INITIAL_PROJECTS: Project[] = [
 
 export const SEEDED_SUBMISSIONS = [
   {
+    actorProfileId: "mock-admin",
     id: "seed-1842",
     projectName: "Технарост",
     title: "Проверить форму обратной связи",
@@ -70,6 +71,7 @@ export const SEEDED_SUBMISSIONS = [
     createdAt: "2026-07-20T08:45:00.000Z",
   },
   {
+    actorProfileId: "mock-editor",
     id: "seed-1839",
     projectName: "Форма",
     title: "Обновить текст на главной странице",
@@ -79,6 +81,18 @@ export const SEEDED_SUBMISSIONS = [
     taskStatus: "completed" as TaskStatus,
     bitrixTaskId: "1839",
     createdAt: "2026-07-19T13:20:00.000Z",
+  },
+  {
+    actorProfileId: "mock-editor-2",
+    id: "seed-1837",
+    projectName: "Технарост",
+    title: "Проверить неизвестный результат отправки",
+    responsibleName: "Ирина Соколова",
+    projectId: "technarost",
+    operationStatus: "unknown" as const,
+    taskStatus: "unknown" as TaskStatus,
+    createdAt: "2026-07-18T10:15:00.000Z",
+    message: "Статус создания неизвестен",
   },
 ];
 

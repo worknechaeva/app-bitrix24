@@ -67,6 +67,29 @@ describe("application session cookie", () => {
 });
 
 describe("application session facade", () => {
+  it("maps the mock cookie to its server-side profile identity", async () => {
+    vi.stubEnv("APP_RUNTIME_MODE", "mock");
+    mocks.cookieGet.mockImplementation((name: string) =>
+      name === "task-launcher-mock-role" ? { value: "editor" } : undefined,
+    );
+
+    await expect(getApplicationSession()).resolves.toEqual({
+      mode: "mock",
+      name: "Алексей Редактор",
+      role: "editor",
+      profileId: "mock-editor",
+    });
+    expect(mocks.repository.resolve).not.toHaveBeenCalled();
+  });
+
+  it("does not resolve mock identity without a valid server-side cookie", async () => {
+    vi.stubEnv("APP_RUNTIME_MODE", "mock");
+    mocks.cookieGet.mockReturnValue(undefined);
+
+    await expect(getApplicationSession()).resolves.toBeNull();
+    expect(mocks.repository.resolve).not.toHaveBeenCalled();
+  });
+
   it("returns current profile role only from persistent resolve", async () => {
     mocks.repository.resolve.mockResolvedValueOnce({
       outcome: "active",

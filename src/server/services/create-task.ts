@@ -51,8 +51,20 @@ export type CreateTaskOutcome =
 type ActorBoundSubmission = { actorProfileId: string; submission: SubmissionRecord };
 type ActorBoundPending = { actorProfileId: string; operation: Promise<CreateTaskOutcome> };
 
-const submissions = new Map<string, ActorBoundSubmission>();
-const pending = new Map<string, ActorBoundPending>();
+type RuntimeSubmissionStore = {
+  submissions: Map<string, ActorBoundSubmission>;
+  pending: Map<string, ActorBoundPending>;
+};
+
+const runtimeSubmissionStoreKey = Symbol.for("task-launcher.runtime-submission-store");
+const runtimeGlobal = globalThis as typeof globalThis & {
+  [runtimeSubmissionStoreKey]?: RuntimeSubmissionStore;
+};
+const runtimeSubmissionStore = (runtimeGlobal[runtimeSubmissionStoreKey] ??= {
+  submissions: new Map(),
+  pending: new Map(),
+});
+const { submissions, pending } = runtimeSubmissionStore;
 
 function parseTags(requiredTag: string, value: string) {
   const tags = [requiredTag, ...value.split(",")].map((tag) => tag.trim()).filter(Boolean);
@@ -66,6 +78,23 @@ function toDeadline(value: string) {
 function validationErrors(error: ReturnType<typeof taskCreateRequestSchema.safeParse>) {
   if (error.success) return undefined;
   return error.error.flatten().fieldErrors as Record<string, string[]>;
+}
+
+function seededSubmissionRecord(item: (typeof SEEDED_SUBMISSIONS)[number]): SubmissionRecord {
+  const { actorProfileId, ...submission } = item;
+  if (!actorProfileId) throw new Error("Seeded submission author is required");
+  return {
+    ...submission,
+    idempotencyKey: item.id,
+    files: [],
+    requestPayloadSanitized: {
+      title: item.title,
+      responsibleId: "mock",
+      groupId: "77",
+      tags: [],
+      files: [],
+    },
+  };
 }
 
 export async function createTask(input: TaskCreateRequest, actor: ProjectActor): Promise<CreateTaskOutcome> {
@@ -186,21 +215,17 @@ async function executeCreate(data: TaskCreateRequest, actor: ProjectActor): Prom
   }
 }
 
-export function listSubmissions(): SubmissionRecord[] {
+export function listSubmissions(actor: ProjectActor): SubmissionRecord[] {
+  const visibleRuntime = Array.from(submissions.values()).filter(
+    (item) => actor.role === "administrator" || item.actorProfileId === actor.profileId,
+  );
+  const visibleSeeded = SEEDED_SUBMISSIONS.filter(
+    (item) => actor.role === "administrator" || item.actorProfileId === actor.profileId,
+  );
+
   return [
-    ...Array.from(submissions.values(), ({ submission }) => submission),
-    ...SEEDED_SUBMISSIONS.map((item) => ({
-      ...item,
-      idempotencyKey: item.id,
-      files: [],
-      requestPayloadSanitized: {
-        title: item.title,
-        responsibleId: "mock",
-        groupId: "77",
-        tags: [],
-        files: [],
-      },
-    })),
+    ...visibleRuntime.map(({ submission }) => submission),
+    ...visibleSeeded.map(seededSubmissionRecord),
   ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 

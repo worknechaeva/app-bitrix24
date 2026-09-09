@@ -393,3 +393,17 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Связанное продуктовое решение:** DEC-034, DEC-036.
 - **Связанный тест:** `tests/database/bitrix24-user-credentials.database.test.ts` — `creates one row during concurrent initial verified OAuth replacement`; `tests/database/profile-lifecycle.database.test.ts` — `blocks atomically and wins races with session creation and credential rotation`; `supabase/tests/database/bitrix24_user_credentials.test.sql` — advisory/profile lock assertions.
 - **Коммит исправления:** —
+
+## QA-025 — Mock-история раскрывала попытки других пользователей
+
+- **Дата обнаружения:** 2026-09-09
+- **Источник:** сверка Milestone 2 с server-side authorization
+- **Устройство или браузер:** server integration, desktop Chromium, iPhone WebKit и Android Chromium
+- **Экран:** главная страница и `/submissions`
+- **Описание:** runtime submissions уже сохраняли `actorProfileId`, но общее чтение его игнорировало, seeded submissions не имели автора, а оба экрана запрашивали историю без actor-контекста. Первое исправление оставило runtime `Map` внутри экземпляра модуля: Server Action подтверждал создание, но Server Component из другого server bundle видел только fixtures.
+- **Ожидаемый результат:** editor получает только seeded и runtime попытки своего profile, administrator получает общую историю; actor определяется проверенной server-side session, а live-ветки не читают mock-историю.
+- **Приоритет:** Critical
+- **Статус:** Fixed
+- **Связанное продуктовое решение:** DEC-021, DEC-023, DEC-027, DEC-035.
+- **Связанный тест:** `tests/integration/create-task.test.ts` — actor isolation и `shares actor-bound runtime history across isolated server module instances`; `tests/integration/submission-pages-authorization.test.tsx`; `tests/unit/application-session.test.ts` — mock identity; `tests/e2e/task-flow.spec.ts` — `mock history is isolated for editor and shared with administrator`.
+- **Коммит исправления:** —

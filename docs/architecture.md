@@ -206,7 +206,8 @@ Credentials не хранятся в profiles. Encryption key находится
 - Каждая явная попытка создает отдельную `task_submissions` и новый idempotency key.
 - `operation_status` принимает `pending`, `success`, `error`, `unknown`.
 - Timeout дает `unknown`; автоматический retry запрещен; ручной retry является новой попыткой.
-- В development/test runtime cache по idempotency key дополнительно связан с actor profile, поэтому чужой actor не может получить cached или in-flight результат.
+- В development/test runtime cache хранится в едином process-wide server-only store, доступном Server Actions и Server Components, и по idempotency key дополнительно связан с actor profile, поэтому чужой actor не может получить cached или in-flight результат.
+- Mock fixtures также содержат автора попытки. Server Components главной страницы и `/submissions` получают profile и актуальную роль из `requireApplicationSession`, передают их actor-aware service и получают уже отфильтрованные записи; URL и browser payload не участвуют в выборе identity или роли.
 - Editor читает собственную историю, administrator — общую.
 - Success, `bitrix_task_id` и sync fields изменяет только server-only integration layer.
 - UI-модель `TaskStatus` остается `new`, `in_progress`, `completed`, `unknown`.
