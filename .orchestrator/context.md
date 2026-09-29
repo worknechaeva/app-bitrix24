@@ -5,7 +5,7 @@
 - Task Launcher – русскоязычное PWA для задач в Bitrix24. (README.md, «Task Launcher»; docs/product/current-scope.md, «Формат продукта и портал»)
 - Модульный монолит: Next.js App Router, strict TypeScript, серверный слой, use case, repository/integration, БД/RPC и Bitrix24. (docs/architecture.md, «Приложение», «Направление зависимостей»)
 - Один deployment – один портал; OAuth только для active employee; роли `administrator` и `editor` локальные. (docs/product/current-scope.md, «Формат продукта и портал», «Вход и роли»)
-- Milestone 2: OAuth, Supabase foundation, Directory, персональные проекты готовы локально. Remote Supabase schema, submissions и live task creation не подключены. (docs/roadmap.md, «Milestone 2», «Следующий интеграционный milestone»; README.md, «Что пока не подключено»)
+- Milestone 2: OAuth, Supabase foundation, Directory, персональные проекты готовы локально. Remote Supabase schema, persistent submissions и live task creation не подключены. (docs/roadmap.md, «Milestone 2», «Следующий интеграционный milestone»; README.md, «Что пока не подключено»)
 
 ## Обязательные правила
 
@@ -30,13 +30,13 @@
 ## Проверки
 
 - Перед передачей выполнить применимые: `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:e2e`, `pnpm build`. (AGENTS.md, «Проверки»; package.json, scripts)
-- `format:check` – Prettier, `lint` – ESLint, `typecheck` – `tsc --noEmit`, `test` – Vitest unit/integration. Это короткие проверки. (package.json, scripts)
+- `format:check` – Prettier, `lint` – ESLint, `typecheck` – `tsc --noEmit`, `test` – Vitest unit/integration. (package.json, scripts)
 - `pnpm test:e2e` – Playwright; перед первым запуском `pnpm exec playwright install chromium webkit`. (package.json; README.md, «Команды проверки»)
 - `pnpm test:database` требует local Supabase stack и в список AGENTS.md не входит; в CI запускается отдельным job вместе с pgTAP. (package.json; vitest.database.config.ts; .github/workflows/ci.yml)
 
 ## Соглашения
 
-- Prettier: printWidth 110, двойные кавычки, точки с запятой, trailing commas; импорт `@/*` – это `src/*`; серверные модули помечены `server-only`. (.prettierrc.json; tsconfig.json; src/server/oauth/)
+- Prettier: printWidth 110, двойные кавычки, точки с запятой, trailing commas; импорт `@/*` – это `src/*`; серверные модули в `src/server/` импортируют `server-only` (кроме mock-only `auth/mock-session.ts` и `fixtures.ts`). (.prettierrc.json; tsconfig.json; src/server/oauth/; src/server/)
 - Decisions `Active` действуют, `Superseded` – история; учитывать открытые QA-записи (сейчас Open нет). (AGENTS.md, «Обязательный контекст»; docs/README.md, «Статусы»)
 
 ## Без решения владельца не менять
