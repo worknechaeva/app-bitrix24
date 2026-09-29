@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppSessionRepository } from "@/server/auth/app-session-repository";
 import { hashAppSessionToken } from "@/server/auth/app-session-service";
+import { getApplicationRuntimeMode, isOAuthSpikeRequested } from "@/server/auth/runtime-mode";
 import {
   APPLICATION_SESSION_COOKIE_NAME,
   readApplicationSessionCookie,
@@ -67,6 +68,36 @@ describe("application session cookie", () => {
 });
 
 describe("application session facade", () => {
+  it("keeps production on live sessions when mock runtime and OAuth spike flags conflict", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("APP_RUNTIME_MODE", "mock");
+    vi.stubEnv("BITRIX24_OAUTH_SPIKE_ENABLED", "true");
+    mocks.cookieGet.mockImplementation((name: string) => {
+      if (name === "task-launcher-mock-role") return { value: "editor" };
+      if (name === APPLICATION_SESSION_COOKIE_NAME) return { value: token };
+      return undefined;
+    });
+    mocks.repository.resolve.mockResolvedValueOnce({
+      outcome: "active",
+      actor: {
+        sessionId: "118f47a7-7c60-7a31-8f6a-27f4bb596f5a",
+        profileId,
+        portalInstallationId: 1,
+        role: "administrator",
+        expiresAt: "2026-09-10T12:00:00.000Z",
+      },
+    });
+
+    expect(getApplicationRuntimeMode()).toBe("live");
+    expect(isOAuthSpikeRequested()).toBe(false);
+    await expect(getApplicationSession()).resolves.toMatchObject({
+      mode: "live",
+      profileId,
+      role: "administrator",
+    });
+    expect(mocks.repository.resolve).toHaveBeenCalledExactlyOnceWith(hashAppSessionToken(token));
+  });
+
   it("maps the mock cookie to its server-side profile identity", async () => {
     vi.stubEnv("APP_RUNTIME_MODE", "mock");
     mocks.cookieGet.mockImplementation((name: string) =>

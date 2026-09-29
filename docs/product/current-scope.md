@@ -217,6 +217,8 @@ Credentials хранятся отдельно от profiles. Сырой session 
 
 В `APP_RUNTIME_MODE=live` защищенный UI разрешает actor только через persistent app session. Страница проектов подключена к persistent storage и Directory. Остальные business-страницы до подключения submissions и live task creation показывают безопасный placeholder и не выдают mock data. Mock auth и mock business UI остаются только development/test `mock` mode.
 
+В `NODE_ENV=production` runtime принудительно остается `live`, даже если одновременно заданы `APP_RUNTIME_MODE=mock` и `BITRIX24_OAUTH_SPIKE_ENABLED=true`: OAuth spike не активируется, а cookie mock-сессии не разрешается в application session и не выдает mock identity.
+
 Directory contract analysis по официальной документации и согласованная read-only live campaign завершены. Подтверждены `user_brief`, `socialnetwork`, `sonet_group`, member binding, employee/entity response shapes и `tasks/create_tasks` capability. Проверка не создавала и не изменяла пользователей, группы, проекты, Scrum или задачи; raw OAuth tokens, codes и provider responses не сохранялись.
 
 Supabase Custom OAuth spike не входит в Milestone 2.
