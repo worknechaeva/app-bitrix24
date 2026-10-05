@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import { AppSessionService, hashAppSessionToken } from "@/server/auth/app-session-service";
@@ -35,6 +36,16 @@ const credentialService = new Bitrix24CredentialService(
   new Bitrix24CredentialCrypto(Buffer.alloc(32, 0x6b)),
 );
 const endpoint = "https://profile-lifecycle.example/rest/";
+const testRunNamespace = `9${BigInt(`0x${randomBytes(16).toString("hex")}`)
+  .toString(10)
+  .padStart(39, "0")}`;
+
+function testBitrixUserId(suffix: number) {
+  if (!Number.isInteger(suffix) || suffix < 1 || suffix > 99) {
+    throw new Error("Profile lifecycle fixture suffix must be an integer from 1 to 99");
+  }
+  return `${testRunNamespace}${suffix.toString().padStart(2, "0")}`;
+}
 
 async function createProfile(bitrixUserId: string) {
   return (
@@ -75,7 +86,7 @@ describe.sequential("administrator and profile lifecycle database security", () 
 
   it("bootstraps one matching verified employee once and remains safe under concurrency", async () => {
     await resetBootstrapAndAdministrators();
-    const matching = await createProfile("9201");
+    const matching = await createProfile(testBitrixUserId(1));
 
     await expect(
       lifecycleRepository.bootstrapFirstAdministrator({
@@ -93,12 +104,12 @@ describe.sequential("administrator and profile lifecycle database security", () 
     ).resolves.toMatchObject({ outcome: "already_administrator", role: "administrator" });
 
     await resetBootstrapAndAdministrators();
-    const mismatched = await createProfile("9202");
+    const mismatched = await createProfile(testBitrixUserId(2));
     await expect(
       lifecycleRepository.bootstrapFirstAdministrator({
         portalInstallationId: 1,
         profileId: mismatched.id,
-        verifiedBitrixUserId: "9203",
+        verifiedBitrixUserId: testBitrixUserId(3),
       }),
     ).resolves.toMatchObject({ outcome: "identity_mismatch", role: null });
     const { data: mismatchRow } = await serviceClient
@@ -108,7 +119,7 @@ describe.sequential("administrator and profile lifecycle database security", () 
       .single();
     expect(mismatchRow?.role).toBe("editor");
 
-    const existingAdministrator = await createProfile("9204");
+    const existingAdministrator = await createProfile(testBitrixUserId(4));
     await setProfile(existingAdministrator.id, { role: "administrator" });
     await expect(
       lifecycleRepository.bootstrapFirstAdministrator({
@@ -119,7 +130,7 @@ describe.sequential("administrator and profile lifecycle database security", () 
     ).resolves.toMatchObject({ outcome: "active_administrator_exists", role: "editor" });
 
     await resetBootstrapAndAdministrators();
-    const concurrent = await createProfile("9205");
+    const concurrent = await createProfile(testBitrixUserId(5));
     const results = await Promise.all(
       Array.from({ length: 12 }, () =>
         lifecycleRepository.bootstrapFirstAdministrator({
@@ -141,10 +152,10 @@ describe.sequential("administrator and profile lifecycle database security", () 
 
   it("authorizes roles from the application session and protects the last administrator", async () => {
     await resetBootstrapAndAdministrators();
-    const administratorA = await createProfile("9210");
-    const administratorB = await createProfile("9211");
-    const editor = await createProfile("9212");
-    const inactiveAdministrator = await createProfile("9213");
+    const administratorA = await createProfile(testBitrixUserId(10));
+    const administratorB = await createProfile(testBitrixUserId(11));
+    const editor = await createProfile(testBitrixUserId(12));
+    const inactiveAdministrator = await createProfile(testBitrixUserId(13));
     await setProfile(administratorA.id, { role: "administrator", is_active: true });
     await setProfile(administratorB.id, { role: "administrator", is_active: true });
     await setProfile(inactiveAdministrator.id, { role: "administrator", is_active: true });
@@ -226,8 +237,8 @@ describe.sequential("administrator and profile lifecycle database security", () 
 
   it("serializes conflicting last-administrator mutations so one active authority remains", async () => {
     await resetBootstrapAndAdministrators();
-    const administratorA = await createProfile("9220");
-    const administratorB = await createProfile("9221");
+    const administratorA = await createProfile(testBitrixUserId(20));
+    const administratorB = await createProfile(testBitrixUserId(21));
     await setProfile(administratorA.id, { role: "administrator", is_active: true });
     await setProfile(administratorB.id, { role: "administrator", is_active: true });
     const sessionA = await sessionService.issue({ portalInstallationId: 1, profileId: administratorA.id });
@@ -262,13 +273,13 @@ describe.sequential("administrator and profile lifecycle database security", () 
 
   it("blocks atomically and wins races with session creation and credential rotation", async () => {
     await resetBootstrapAndAdministrators();
-    const actor = await createProfile("9230");
+    const actor = await createProfile(testBitrixUserId(30));
     await setProfile(actor.id, { role: "administrator", is_active: true });
     const actorSession = await sessionService.issue({ portalInstallationId: 1, profileId: actor.id });
     if (actorSession.outcome !== "created") throw new Error("Expected administrator session");
     const actorTokenHash = hashAppSessionToken(actorSession.token);
 
-    const target = await createProfile("9231");
+    const target = await createProfile(testBitrixUserId(31));
     const targetSessionA = await sessionService.issue({ portalInstallationId: 1, profileId: target.id });
     const targetSessionB = await sessionService.issue({ portalInstallationId: 1, profileId: target.id });
     if (targetSessionA.outcome !== "created" || targetSessionB.outcome !== "created") {
@@ -302,7 +313,7 @@ describe.sequential("administrator and profile lifecycle database security", () 
       }),
     ).resolves.toEqual({ outcome: "profile_inactive" });
 
-    const sessionRaceTarget = await createProfile("9232");
+    const sessionRaceTarget = await createProfile(testBitrixUserId(32));
     const [blockResult, issuanceResult] = await Promise.all([
       lifecycleRepository.block({
         actorSessionTokenHash: actorTokenHash,
@@ -317,7 +328,7 @@ describe.sequential("administrator and profile lifecycle database security", () 
       expect(issuanceResult).toEqual({ outcome: "profile_inactive" });
     }
 
-    const credentialRaceTarget = await createProfile("9233");
+    const credentialRaceTarget = await createProfile(testBitrixUserId(33));
     await credentialService.createInitial({
       portalInstallationId: 1,
       profileId: credentialRaceTarget.id,

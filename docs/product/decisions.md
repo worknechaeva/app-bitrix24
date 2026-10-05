@@ -357,11 +357,12 @@
 ## DEC-036 — Administrator и profile lifecycle security contour
 
 - **Дата:** 2026-08-13
+- **Обновлено:** 2026-10-02
 - **Статус:** Active
 - **Контекст:** Persistent profiles, app sessions и encrypted credentials уже запрещали использование inactive identity, но не существовало законченных операций первого administrator, role management и атомарной административной блокировки с защитой от concurrent last-admin races.
-- **Решение:** Matching verified active employee может один раз выполнить first-admin bootstrap через необязательный server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Узкие `SECURITY INVOKER` RPC изменяют роль и блокируют profile только по hash текущей active administrator app session. Portal singleton row сериализует admin mutations и last-active-administrator guard. Block одной транзакцией деактивирует profile, отзывает его пригодные sessions и переводит credentials в `disabled` без расшифровки.
-- **Последствия:** Browser не передает actor identity; authorization повторяется database-side. OAuth reconciliation не меняет role и не реактивирует blocked profile, stale session/credential operations не могут оставить usable authority после block. Unblock отложен до controlled recovery с безопасной provenance состояния `disabled`; verified OAuth не активирует старую pair. Generic audit framework не добавляется, потому что он не требуется для correctness этого slice.
-- **Связанные QA-записи:** —
+- **Решение:** Matching verified active employee может один раз выполнить first-admin bootstrap через необязательный server-only `BOOTSTRAP_ADMIN_BITRIX_USER_ID`. Узкие `SECURITY INVOKER` RPC изменяют роль и блокируют profile только по hash текущей active administrator app session. Portal singleton row сериализует admin mutations и last-active-administrator guard. Block одной транзакцией деактивирует profile, отзывает его пригодные sessions и переводит credentials в `disabled` без расшифровки. Storage failures нормализуются server-only в прежнюю публичную ошибку с закрытыми operation/category и опциональным проверенным кодом; исходная ошибка и произвольные provider fields не сохраняются.
+- **Последствия:** Browser не передает actor identity; authorization повторяется database-side. OAuth reconciliation не меняет role и не реактивирует blocked profile, stale session/credential operations не могут оставить usable authority после block. Для триажа доступны только `bootstrap`/`change_role`/`block`, категории PGRST/SQLSTATE/timeout/connection/unknown и канонический или allowlisted code; исходные message, details, hint, payload, credentials и персональные данные не входят в нормализованную ошибку. Unblock отложен до controlled recovery с безопасной provenance состояния `disabled`; verified OAuth не активирует старую pair. Generic audit framework не добавляется, потому что он не требуется для correctness этого slice.
+- **Связанные QA-записи:** QA-026.
 - **Заменяет:** —
 
 ## DEC-037 — Production Directory contract и read-only live verification

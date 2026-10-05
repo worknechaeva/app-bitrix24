@@ -407,3 +407,17 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Связанное продуктовое решение:** DEC-021, DEC-023, DEC-027, DEC-035.
 - **Связанный тест:** `tests/integration/create-task.test.ts` — actor isolation и `shares actor-bound runtime history across isolated server module instances`; `tests/integration/submission-pages-authorization.test.tsx`; `tests/unit/application-session.test.ts` — mock identity; `tests/e2e/task-flow.spec.ts` — `mock history is isolated for editor and shared with administrator`.
 - **Коммит исправления:** —
+
+## QA-026 — Profile lifecycle database test не повторяется стабильно на одной базе
+
+- **Дата обнаружения:** 2026-10-02
+- **Источник:** повторный локальный PostgreSQL integration прогон и архитектурное ревью
+- **Устройство или браузер:** PostgreSQL 17 / Supabase local stack
+- **Экран:** server-only administrator profile lifecycle
+- **Описание:** database-test повторно использует фиксированные Bitrix user ID уже заблокированных profiles, а storage adapter скрывает безопасную категорию RPC или transport failure. Из-за этого следующий прогон зависит от состояния прежних fixtures, а редкий инфраструктурный сбой нельзя отличить от malformed response без риска раскрыть исходную ошибку.
+- **Ожидаемый результат:** каждый запуск использует отдельный канонический числовой namespace fixtures; обе lifecycle-гонки и их инварианты сохраняются. `ProfileLifecycleStorageError` оставляет прежний публичный контракт и содержит только allowlisted operation, category и валидированный code без исходной ошибки, message, details, hint или payload. Десять последовательных запусков файла на одной базе проходят без reset, retry и ожиданий.
+- **Приоритет:** Critical
+- **Статус:** Open
+- **Связанное продуктовое решение:** DEC-031, DEC-033, DEC-034, DEC-036.
+- **Связанный тест:** `tests/database/profile-lifecycle.database.test.ts` — уникальный числовой namespace и исходные lifecycle/concurrency-инварианты; `tests/unit/supabase-profile-lifecycle-repository.test.ts` — безопасная классификация response, transport и malformed failures. Статус остается Open до coordinator receipts для 10/10 без reset и полного набора проверок.
+- **Коммит исправления:** —
