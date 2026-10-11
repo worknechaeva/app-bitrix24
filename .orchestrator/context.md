@@ -37,7 +37,7 @@
 ## Соглашения
 
 - Prettier: printWidth 110, двойные кавычки, точки с запятой, trailing commas; импорт `@/*` – это `src/*`; серверные модули в `src/server/` импортируют `server-only` (кроме mock-only `auth/mock-session.ts` и `fixtures.ts`). (.prettierrc.json; tsconfig.json; src/server/oauth/; src/server/)
-- Decisions `Active` действуют, `Superseded` – история; учитывать открытые QA-записи (сейчас Open нет). (AGENTS.md, «Обязательный контекст»; docs/README.md, «Статусы»)
+- Decisions `Active` действуют, `Superseded` – история; учитывать открытые QA-записи; текущий список проверять в QA-журнале перед каждой задачей. (AGENTS.md, «Обязательный контекст»; docs/README.md, «Статусы»)
 
 ## Без решения владельца не менять
 

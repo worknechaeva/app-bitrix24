@@ -17,9 +17,13 @@
 
 ## Следующие задачи Milestone 2
 
-1. Persistent `task_submissions` и `task_submission_files` с безопасной историей попыток.
-2. Финальная проверка production guards и Vercel readiness без создания remote resources.
-3. Полный QA и синхронизация документации.
+1. Закрыть security findings QA-027 (browser binding OAuth) и QA-029 (зависимости) до deployment; сохранить safe errors и production guards.
+2. Исправить сохранение error-попыток и replay в mock (QA-028).
+3. Persistent `task_submissions` и `task_submission_files` с безопасной историей попыток.
+4. Финальная проверка production guards и Vercel readiness без создания remote resources.
+5. Повторный полный QA и синхронизация документации.
+
+[Аудит от 2026-10-07](./docs/audits/2026-10-07-project-review.md) содержит доказательства реализации, результаты проверок и план очистки Git/worktrees. Live UI управления пользователями, cleanup sessions/state и provider refresh пока отсутствуют; для их реализации нужен отдельный scope.
 
 ## Следующий интеграционный milestone
 

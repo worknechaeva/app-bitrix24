@@ -18,6 +18,8 @@ Roadmap фиксирует границы этапов, а не календар
 
 ## Milestone 2 — OAuth, Supabase foundation и directory
 
+**Статус:** в работе. OAuth, profiles/roles, sessions/credentials, Directory и персональные проекты реализованы локально. Persistent submissions отсутствуют; production readiness и открытые QA-наблюдения требуют завершения. Проверенная карта реализации и Git находится в [аудите от 2026-10-07](./audits/2026-10-07-project-review.md).
+
 ### 1. Documentation synchronization
 
 - синхронизировать current scope, decisions, architecture, roadmap, PLAN и README;
@@ -38,8 +40,8 @@ Supabase Custom OAuth spike не входит в Milestone 2.
 Migration каждого подсистемного этапа создается только после утверждения результата соответствующего blocking spike:
 
 - завершенные OAuth PWA и portal identity spikes больше не блокируют portal, profiles, sessions и credentials foundation;
-- directory entity spike блокирует реализацию group/project/scrum directory;
-- directory employee spike блокирует реализацию employee directory;
+- directory entity spike завершен read-only verification и больше не блокирует group/project/scrum directory;
+- directory employee spike завершен read-only verification и больше не блокирует employee directory;
 - после успешных OAuth PWA и portal identity spikes directory spikes не блокируют начало portal, profiles, sessions и credentials foundation.
 
 ### 3. Portal foundation
@@ -95,11 +97,13 @@ Migration каждого подсистемного этапа создаетс�
 - app session и server-only DAL как источник actor identity;
 - actor-aware repositories, включая `launcher_projects`;
 - RLS и grants закрывают Data API для `anon/authenticated`; реализовано для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, `bitrix24_user_credentials`, `launcher_projects` и их audit events;
-- service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions` и `bitrix24_user_credentials`;
+- service-role только в privileged database gateway; узкие операции gateway реализованы для `portal_installations`, `profiles`, profile lifecycle, `oauth_transactions`, `app_sessions`, `bitrix24_user_credentials` и `launcher_projects`;
 - транзакционные RPC для bootstrap/ролей/profile block, sessions и archive/restore проектов реализованы; token rotation реализован;
 - adversarial regression-тесты actor authorization, last-admin и block/session/credential races реализованы для profile lifecycle.
 
 ### 9. Persistent submissions history
+
+**Статус:** не реализовано. Следующий локальный storage slice; mock history не заменяет постоянное хранение.
 
 - development/test mock-контур чтения истории завершен: seeded/runtime попытки имеют автора, editor видит свои записи, administrator — общую историю, а обе страницы используют actor из server-side session;
 - таблицы `task_submissions` и `task_submission_files`;
@@ -112,6 +116,8 @@ Migration каждого подсистемного этапа создаетс�
 
 ### 10. Production guards
 
+**Статус:** реализованы и покрыты локальными regression-тестами. Полная готовность production требует закрытия QA-027 и проверки зависимостей QA-029.
+
 - запрет mock Auth и mock Identity/Directory в production;
 - `DisabledBitrix24TaskClient` с fail-closed поведением в production;
 - запрет mock `operation_status=success` и фиктивного `bitrix_task_id` в production;
@@ -119,12 +125,16 @@ Migration каждого подсистемного этапа создаетс�
 
 ### 11. Vercel readiness
 
+**Статус:** не завершено. Есть lazy runtime configuration, canonical callback и fail-closed composition; подтвержденного deployment и проверки инфраструктурных access logs нет.
+
 - разделение development/preview/production environment;
 - фиксированный canonical origin и OAuth callback;
 - sensitive server-only secrets;
 - проверка production composition root без создания Vercel resource в документационной пачке.
 
 ### 12. QA
+
+**Статус:** автоматические проверки и независимый аудит выполнены; открытые замечания перечислены в QA-журнале. Зеленые тесты не означают завершение Milestone 2.
 
 - format, lint, typecheck, unit/integration, E2E и production build;
 - security regression для sessions, roles, portal isolation, repositories и RPC;

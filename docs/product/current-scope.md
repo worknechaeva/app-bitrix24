@@ -1,6 +1,12 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, зашифрованных `bitrix24_user_credentials` и персональных `launcher_projects`, законченный локальный production OAuth authentication contour, security contour administrator/profile lifecycle и production Directory adapter. Remote Supabase schema, deployment и live task creation не изменялись; persistent submissions еще не подключены.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, зашифрованных `bitrix24_user_credentials` и персональных `launcher_projects`, локальный production OAuth authentication contour, security contour administrator/profile lifecycle и production Directory adapter. Remote Supabase schema, deployment и live task creation не изменялись; persistent submissions еще не подключены.
+
+## Подтвержденное состояние реализации
+
+Milestone 2 остается в работе. Server-side profile lifecycle реализован, но live UI управления пользователями еще показывает placeholder. Cleanup sessions/OAuth transactions и automatic provider refresh отсутствуют. OAuth state одноразов и хранится как hash, но callback пока не привязан к браузеру, начавшему вход (QA-027). В mock история сохраняет success/unknown, но error-попытки пока теряются (QA-028). Требуемое поведение ниже сохраняется; эти расхождения не являются новыми продуктовыми решениями. Production зависимости требуют отдельного remediation и проверки применимости advisories (QA-029).
+
+Состояние Git, доказательства и очередность работ находятся в [аудите от 2026-10-07](../audits/2026-10-07-project-review.md).
 
 ## Формат продукта и портал
 

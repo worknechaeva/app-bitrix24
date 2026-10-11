@@ -4,6 +4,8 @@
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
+Актуальная карта готовности, состояние Git и незавершенные работы зафиксированы в [аудите от 2026-10-07](./docs/audits/2026-10-07-project-review.md). Milestone 2 остается в работе; открытые QA-027–QA-029 требуют закрытия до объявления production readiness.
+
 ## Что уже работает
 
 - закрытый dev-only вход под mock-администратором или редактором;
@@ -18,7 +20,7 @@
 - безопасный повтор создания проекта с тем же ключом операции и отдельное обновление списка после сбоя чтения;
 - mock-экраны пользователей и состояния интеграции;
 - PWA manifest, иконки и инструкция по установке;
-- unit/integration-тесты, Playwright E2E и GitHub Actions.
+- unit/integration-тесты, Playwright E2E, PostgreSQL/pgTAP security/concurrency проверки и GitHub Actions.
 
 Данные mock-сценария хранятся только в памяти процесса и сбрасываются после перезапуска dev-сервера.
 
@@ -88,10 +90,13 @@ src/
   lib/env/                     server-side валидация environment
   server/                      fixtures, auth guard, repositories, file boundary и use cases
 tests/
-  unit/                        схемы и mock-клиент
-  integration/                 task use case и idempotency
+  unit/                        схемы, UI, auth, storage и integration boundaries
+  integration/                 OAuth, authorization, project/task use cases и idempotency
+  database/                    PostgreSQL repositories и concurrency
   e2e/                         desktop/iPhone/Android smoke flows
 ```
+
+Database-проверки требуют отдельного локального Supabase stack: committed migrations, `pnpm exec supabase test db --local supabase/tests/database` и `pnpm test:database` с локальными `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. Не запускайте reset на базе с данными владельца; CI использует изолированную базу. После работы остановите тестовый stack и Colima по правилам AGENTS.md.
 
 Краткий план milestone описан в [PLAN.md](./PLAN.md), устойчивые технические границы — в [docs/architecture.md](./docs/architecture.md), правила работы с репозиторием — в [AGENTS.md](./AGENTS.md).
 

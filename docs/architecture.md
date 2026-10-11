@@ -53,7 +53,7 @@ UI
 - Resolve возвращает только session/profile/portal IDs, актуальную роль из `profiles` и expiry для active session. Unknown, expired, revoked и profile inactive не раскрывают actor identity; роль не хранится snapshot в session.
 - Revoke использует row lock и database time: только первый конкурентный вызов устанавливает `revoked_at`, повторные вызовы не меняют timestamp, expired session не получает новую state transition.
 - Logout устанавливает `revoked_at`; блокировка profile отзывает все его app sessions.
-- Истекшие и отозванные сессии очищаются технической процедурой.
+- Cleanup истекших и отозванных sessions и OAuth transactions требуется для эксплуатации, но пока не реализован.
 - Persistent OAuth `state` создается server-only из 32 криптографически случайных байтов в `base64url`; repository принимает только полный lowercase SHA-256 hash, а raw state не хранится, не логируется и не входит в ошибки.
 - `oauth_transactions` использует database time и TTL ровно 10 минут. Узкая `SECURITY INVOKER` RPC блокирует строку и атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`; только `consumed` содержит безопасный `return_path`.
 - `return_path` проходит application canonicalization относительно фиксированного sentinel origin и database constraint; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители запрещены.
@@ -132,7 +132,7 @@ RPC используются для транзакционных переход�
 - одноразовое consumption OAuth transaction;
 - атомарная rotation OAuth token pair с optimistic locking.
 
-RPC размещаются вне публичной API-поверхности; право выполнения у `PUBLIC`, `anon` и `authenticated` отзывается. Если функции требуют повышенных прав, они имеют фиксированный `search_path` и не доверяют actor ID из параметров браузера.
+Реализованные RPC находятся в `public` для server-only Data API gateway, но закрыты для конечного пользователя: право выполнения у `PUBLIC`, `anon` и `authenticated` отзывается. Если функции требуют повышенных прав, они имеют фиксированный `search_path` и не доверяют actor ID из параметров браузера.
 
 ## Bitrix24-контракты
 
