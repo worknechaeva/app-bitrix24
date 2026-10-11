@@ -6,6 +6,7 @@
 - Модульный монолит: Next.js App Router, strict TypeScript, серверный слой, use case, repository/integration, БД/RPC и Bitrix24. (docs/architecture.md, «Приложение», «Направление зависимостей»)
 - Один deployment – один портал; OAuth только для active employee; роли `administrator` и `editor` локальные. (docs/product/current-scope.md, «Формат продукта и портал», «Вход и роли»)
 - Milestone 2: OAuth, Supabase foundation, Directory, персональные проекты готовы локально. Remote Supabase schema, persistent submissions и live task creation не подключены. (docs/roadmap.md, «Milestone 2», «Следующий интеграционный milestone»; README.md, «Что пока не подключено»)
+- Аудит QA-027–QA-029 закрыт: browser binding OAuth, safe mock error history/replay и dependency remediation. Следующий slice — persistent submissions; исходный аудит и состояние после очистки Git описаны отдельно. (docs/audits/2026-10-07-project-review.md; docs/audits/2026-10-11-stabilization.md; PLAN.md)
 
 ## Обязательные правила
 
@@ -14,6 +15,7 @@
 - Сверять документацию с кодом и соблюдать архитектуру. Пользовательские тексты писать по-русски, буква е с двумя точками заменяется на е. (AGENTS.md, «Правила изменений»)
 - Не хранить секреты в документации, Git, fixtures, frontend bundle, логах и пользовательских ошибках. OAuth tokens и database credentials держать server-only. (AGENTS.md, «Правила изменений»; docs/product/current-scope.md, «Вход и роли»)
 - Не менять и не переписывать старые коммиты. Не делать push, PR или merge без явного разрешения пользователя. (AGENTS.md, «Правила изменений»)
+- После database/gate остановить локальную тестовую базу без удаления данных владельца; если контейнеров нет и запуск оркестратора не работает, остановить Colima. Проверять Docker вне sandbox, если внутри он недоступен. (AGENTS.md, «Docker и Colima: не оставлять включенными»)
 - Migrations только в `supabase/migrations/` и только для local Supabase; к remote (облачной) базе их не применять. (docs/product/current-scope.md, «Authorization и база»; docs/architecture.md, вводный абзац)
 - Права и actor проверять на сервере по app session; ID из URL/формы/browser не есть identity. User-scoped RLS нет; Data API закрыт `anon`/`authenticated`; service-role только в privileged gateway. (docs/architecture.md, «Направление зависимостей», «Supabase, grants и authorization»)
 - В production запрещены mock Auth/Identity/Directory и фиктивный success. Live task client, загрузка файлов и синхронизация статусов – следующий milestone. (docs/roadmap.md, «Production guards», «Следующий интеграционный milestone»)

@@ -4,9 +4,9 @@
 
 ## Подтвержденное состояние реализации
 
-Milestone 2 остается в работе. Server-side profile lifecycle реализован, но live UI управления пользователями еще показывает placeholder. Cleanup sessions/OAuth transactions и automatic provider refresh отсутствуют. OAuth state одноразов, хранится как hash и привязан к браузеру через краткоживущую HttpOnly cookie (QA-027 исправлена). В mock история сохраняет success/error/unknown с actor isolation; replay возвращает сохраненный outcome без повторного вызова (QA-028 исправлена). Production зависимости требуют отдельного remediation и проверки применимости advisories (QA-029).
+Milestone 2 остается в работе. Server-side profile lifecycle реализован, но live UI управления пользователями еще показывает placeholder. Cleanup sessions/OAuth transactions и automatic provider refresh отсутствуют. OAuth state одноразов, хранится как hash и привязан к браузеру через краткоживущую HttpOnly cookie (QA-027 исправлена). В mock история сохраняет success/error/unknown с actor isolation; replay возвращает сохраненный outcome без повторного вызова (QA-028 исправлена). Production зависимости обновлены, audit показывает 0 advisories (QA-029 исправлена); оставшийся dev-only advisory без upstream patch отдельно описан в отчете стабилизации.
 
-Состояние Git, доказательства и очередность работ находятся в [аудите от 2026-10-07](../audits/2026-10-07-project-review.md).
+Исходный снимок находится в [аудите от 2026-10-07](../audits/2026-10-07-project-review.md); исправления, проверки, очистка Git и актуальная точка продолжения — в [отчете стабилизации от 2026-10-11](../audits/2026-10-11-stabilization.md).
 
 ## Формат продукта и портал
 

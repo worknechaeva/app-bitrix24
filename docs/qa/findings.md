@@ -435,12 +435,13 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Ожидаемый результат:** callback без привязки к инициировавшему браузеру отклоняется до consumption/provider/persistence; корректный вход, отказ provider, expiry, replay и session rotation остаются работоспособными.
 - **Приоритет:** Critical — закрыть до deployment
 - **Статус:** Fixed
-- **Связанные решения:** DEC-020, DEC-021, DEC-035.
-- **Доказательства:** `src/server/auth/production-oauth.ts` — `handleProductionOAuthStart` и `handleProductionOAuthCallback`; `tests/integration/production-oauth-flow.test.ts` — успешный callback с `new Request` без Cookie.
+- **Связанные решения:** DEC-020, DEC-021, DEC-035, DEC-039.
+- **Доказательства до исправления:** `src/server/auth/production-oauth.ts` — `handleProductionOAuthStart` и `handleProductionOAuthCallback`; прежний `tests/integration/production-oauth-flow.test.ts` — успешный callback с `new Request` без Cookie.
 - **Основание:** [RFC 6749, раздел 10.12](https://www.rfc-editor.org/rfc/rfc6749#section-10.12) требует связать callback с browser context, а не только иметь случайный одноразовый state.
 - **Нужный regression:** два независимых cookie jar, отсутствие/несовпадение binding, отсутствие side effects, успешный callback и replay. Исправление и regression реализованы: `tests/integration/production-oauth-flow.test.ts` — browser proof rejection, две cookie jar, success/rotation, expiry/replay/denial. 33 теста файла прошли 2026-10-11.
 
 - **Исправление:** browser-binding cookie, constant-time comparison до consumption, очистка binding cookie при совпавшем callback без удаления app session cookie; DEC-039.
+- **Коммит исправления:** `3b9f458`.
 
 ## QA-028 — Неуспешная mock-попытка отсутствует в истории
 
@@ -456,6 +457,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Доказательства:** `src/server/services/create-task.ts` — `executeCreate` catch и cached outcome; текущий тест `returns a safe message for an integration error` не проверяет историю.
 - **Исправление:** безопасная error-запись сохраняется с actor и metadata без внешнего ответа, task ID или URL. Replay возвращает прежнюю ошибку без повторного вызова; валидация и недоступный проект не создают попытку. История показывает «Ошибка отправки», явный повтор из формы создает новую попытку с новым ключом. Persistent submissions остаются отдельным slice.
 - **Regression:** `tests/integration/create-task.test.ts` — concurrency/replay, один вызов, actor isolation, safe metadata и preflight errors; 11 тестов прошли 2026-10-11. `tests/e2e/task-flow.spec.ts` — error history и успешная ручная повторная отправка на desktop, iPhone и Android.
+- **Коммит исправления:** `fc99282`.
 
 ## QA-029 — Production dependency graph содержит security advisories
 
@@ -465,9 +467,11 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Описание:** audit завершился с 75 уязвимыми вхождениями: 4 critical, 31 high, 36 moderate, 4 low. Это счетчик dependency graph, а не 75 доказанных атак на приложение. `next@16.2.10` входит в affected range DoS для App Router + Server Actions, которые используются в проекте. `shadcn` помещен в runtime dependencies и приводит CLI/MCP/Express-зависимости в production install.
 - **Ожидаемый результат:** выбрать совместимые исправленные версии по актуальным advisories, обновить lockfile, вынести CLI-only зависимости из production, повторить audit и весь gate. Для оставшихся findings явно зафиксировать применимость и обоснование.
 - **Приоритет:** High — закрыть до deployment
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанные решения:** DEC-022, DEC-028, DEC-035.
 - **Доказательства:** `package.json`, `pnpm-lock.yaml`, сводка dependency audit в [отчете](../audits/2026-10-07-project-review.md).
 - **Источник:** [Next.js Server Actions DoS](https://github.com/vercel/next.js/security/advisories/GHSA-m99w-x7hq-7vfj). Патч для этого конкретного advisory начинается с 16.2.11; он не закрывает автоматически остальные advisories.
 - **Ограничение:** advisories для Windows, `next/og`, Image Optimization и Express требуют проверки условий. Windows hosting, `next/og`, `next/image`, custom server и rewrites в текущем source не обнаружены; эксплуатация этих findings не подтверждена.
-- **Проверка исправления:** dependency audit, production build и существующие unit/integration/E2E/database gates. Версии в этой документационной пачке не менялись.
+- **Исправление 2026-10-11:** `next` и `eslint-config-next` закреплены на 16.3.8; CLI `shadcn` перенесен в devDependencies и обновлен до 4.21.4. Совместимые транзитивные security patches сохранены в lockfile; `pnpm-workspace.yaml` закрепляет исправленные browserslist, baseline-browser-mapping и brace-expansion. Vitest обновлен до 4.1.11 без перехода на major 5.
+- **Проверка:** production audit — 0 advisories; frozen install и полный gate. Итоговые snapshots и применимость остаточного dev-only advisory находятся в [отчете стабилизации](../audits/2026-10-11-stabilization.md).
+- **Остаточный dev-риск:** `braces@3.0.3`, [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), имеет high advisory без upstream patched version. Он отсутствует в production install; найденные пути относятся к ESLint/fast-glob и shadcn, которые работают с доверенными конфигурациями репозитория. Пользовательские HTTP inputs приложения в эти CLI не передаются. Это проверка применимости, а не заявление об исправлении самой библиотеки. При смене способа использования CLI или выходе patch требуется повторная оценка.

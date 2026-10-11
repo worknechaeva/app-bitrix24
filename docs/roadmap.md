@@ -18,7 +18,7 @@ Roadmap фиксирует границы этапов, а не календар
 
 ## Milestone 2 — OAuth, Supabase foundation и directory
 
-**Статус:** в работе. OAuth, profiles/roles, sessions/credentials, Directory и персональные проекты реализованы локально. Persistent submissions отсутствуют; production readiness и открытые QA-наблюдения требуют завершения. Проверенная карта реализации и Git находится в [аудите от 2026-10-07](./audits/2026-10-07-project-review.md).
+**Статус:** в работе. OAuth, profiles/roles, sessions/credentials, Directory и персональные проекты реализованы локально. Persistent submissions отсутствуют; production readiness требует завершения. QA-027–QA-029 исправлены и проверены в [стабилизации от 2026-10-11](./audits/2026-10-11-stabilization.md). Исходная карта реализации и Git находится в [аудите от 2026-10-07](./audits/2026-10-07-project-review.md).
 
 ### 1. Documentation synchronization
 
