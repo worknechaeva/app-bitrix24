@@ -53,10 +53,11 @@ UI
 - Resolve возвращает только session/profile/portal IDs, актуальную роль из `profiles` и expiry для active session. Unknown, expired, revoked и profile inactive не раскрывают actor identity; роль не хранится snapshot в session.
 - Revoke использует row lock и database time: только первый конкурентный вызов устанавливает `revoked_at`, повторные вызовы не меняют timestamp, expired session не получает новую state transition.
 - Logout устанавливает `revoked_at`; блокировка profile отзывает все его app sessions.
-- Истекшие и отозванные сессии очищаются технической процедурой.
+- Cleanup истекших и отозванных sessions и OAuth transactions требуется для эксплуатации, но пока не реализован.
 - Persistent OAuth `state` создается server-only из 32 криптографически случайных байтов в `base64url`; repository принимает только полный lowercase SHA-256 hash, а raw state не хранится, не логируется и не входит в ошибки.
 - `oauth_transactions` использует database time и TTL ровно 10 минут. Узкая `SECURITY INVOKER` RPC блокирует строку и атомарно возвращает `consumed`, `unknown`, `expired` или `already_consumed`; только `consumed` содержит безопасный `return_path`.
 - `return_path` проходит application canonicalization относительно фиксированного sentinel origin и database constraint; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители запрещены.
+- Production OAuth start выдает browser-binding `__Host-task-launcher-oauth-state` cookie с database expiry state, HttpOnly/Secure/SameSite=Lax и Path=/ без Domain. Callback валидирует один canonical state и одну matching cookie в constant time до consumption и provider calls. Несовпадение не consuming state и не очищает действующую попытку; совпавший callback очищает binding cookie в любом контролируемом outcome, сохраняя отдельный Set-Cookie app session при success. Один браузер имеет одну текущую OAuth-попытку, новый successful start заменяет binding прежней.
 - Production OAuth start/callback использует persistent OAuth transaction; state consumed до provider error/code. Callback выполняет credential persistence, revoke предыдущей browser session и issuance новой session, затем устанавливает `__Host-task-launcher-session` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`.
 - Live actor facade разрешает profile/portal/role только из `AppSessionService.resolve`. Неактивные, unknown, expired и revoked sessions считаются unauthenticated. Logout идемпотентно отзывает session и всегда очищает cookie.
 - Development/test spike продолжает использовать отдельный ephemeral state store только при явном spike flag; production runtime не импортирует spike state/runtime.
@@ -132,7 +133,7 @@ RPC используются для транзакционных переход�
 - одноразовое consumption OAuth transaction;
 - атомарная rotation OAuth token pair с optimistic locking.
 
-RPC размещаются вне публичной API-поверхности; право выполнения у `PUBLIC`, `anon` и `authenticated` отзывается. Если функции требуют повышенных прав, они имеют фиксированный `search_path` и не доверяют actor ID из параметров браузера.
+Реализованные RPC находятся в `public` для server-only Data API gateway, но закрыты для конечного пользователя: право выполнения у `PUBLIC`, `anon` и `authenticated` отзывается. Если функции требуют повышенных прав, они имеют фиксированный `search_path` и не доверяют actor ID из параметров браузера.
 
 ## Bitrix24-контракты
 
@@ -206,7 +207,8 @@ Credentials не хранятся в profiles. Encryption key находится
 
 - Каждая явная попытка создает отдельную `task_submissions` и новый idempotency key.
 - `operation_status` принимает `pending`, `success`, `error`, `unknown`.
-- Timeout дает `unknown`; автоматический retry запрещен; ручной retry является новой попыткой.
+- Timeout дает `unknown`; автоматический retry запрещен; ручной retry после error/unknown является новой попыткой с новым ключом.
+- Mock error после вызова интеграции сохраняется с actor и safe metadata. Cached/in-flight replay возвращает прежний outcome без нового вызова. Ошибки валидации и недоступный проект до вызова клиента не создают history record; production disabled client не создает mock-попыток.
 - В development/test runtime cache хранится в едином process-wide server-only store, доступном Server Actions и Server Components, и по idempotency key дополнительно связан с actor profile, поэтому чужой actor не может получить cached или in-flight результат.
 - Mock fixtures также содержат автора попытки. Server Components главной страницы и `/submissions` получают profile и актуальную роль из `requireApplicationSession`, передают их actor-aware service и получают уже отфильтрованные записи; URL и browser payload не участвуют в выборе identity или роли.
 - Editor читает собственную историю, administrator — общую.

@@ -2,6 +2,8 @@
 
 Статусы записей: `Open`, `Fixed`, `Rejected`. Новая проблема остается `Open`, пока код не изменен и связанный регрессионный тест не прошел. История закрытых записей не удаляется.
 
+На 2026-10-11 открыты QA-028 (error-попытки) и QA-029 (dependency advisories). QA-027 исправлена; QA-001–QA-026 остаются закрытой историей.
+
 ## QA-001 — Аватар перекрывает мобильную навигацию
 
 - **Дата обнаружения:** 2026-07-20
@@ -320,7 +322,7 @@ QA-018 закрыта regression-тестами и связана с комми�
 
 ## Итог preventive security coverage
 
-QA-019 закрыта прямым integration-тестом обеих административных server actions. Открытых QA-наблюдений нет.
+QA-019 закрыта прямым integration-тестом обеих административных server actions. На момент этой исторической проверки открытых QA-наблюдений не было.
 
 ## QA-020 — OAuth callback validation errors возвращают HTTP 502
 
@@ -336,7 +338,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-029.
 - **Связанный тест:** `tests/integration/oauth-spike-routes.test.ts` — callback validation, upstream failure, internal error и success scenarios.
-- **Коммит исправления:** —
+- **Коммит исправления:** `c621c43`
 
 ## QA-021 — Mock-проекты не соответствовали постоянной модели ownership
 
@@ -350,7 +352,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-025, DEC-027, DEC-037.
 - **Связанный тест:** `tests/integration/project-actions-authorization.test.ts`, `tests/unit/project-repository.test.ts`, `tests/e2e/task-flow.spec.ts`.
-- **Коммит исправления:** —
+- **Коммит исправления:** `7f16514`
 
 ## QA-022 — Повторный OAuth и runtime idempotency нарушали actor-контекст
 
@@ -364,7 +366,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-013, DEC-025, DEC-035, DEC-037.
 - **Связанный тест:** `tests/integration/create-task.test.ts` — `does not disclose a cached or in-flight submission to another actor`; `tests/integration/project-page-data.test.ts`; `tests/unit/project-draft.test.ts`; `tests/unit/project-management.test.tsx`.
-- **Коммит исправления:** —
+- **Коммит исправления:** `7f16514`
 
 ## QA-023 — Сбой запроса блокировал форму и мог спровоцировать дубль проекта
 
@@ -378,7 +380,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-025, DEC-038.
 - **Связанный тест:** `tests/unit/project-management.test.tsx` — transport failure, сохранение полей, повтор ключа и обновление списка; `tests/integration/project-page-data.test.ts` — независимые mutation/list outcomes; `tests/unit/project-repository.test.ts` и `tests/database/launcher-projects.database.test.ts` — idempotent replay, payload conflict, actor и concurrency.
-- **Коммит исправления:** —
+- **Коммит исправления:** `7f16514`
 
 ## QA-024 — Concurrency credentials и profile block образовывала database deadlock
 
@@ -392,7 +394,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-034, DEC-036.
 - **Связанный тест:** `tests/database/bitrix24-user-credentials.database.test.ts` — `creates one row during concurrent initial verified OAuth replacement`; `tests/database/profile-lifecycle.database.test.ts` — `blocks atomically and wins races with session creation and credential rotation`; `supabase/tests/database/bitrix24_user_credentials.test.sql` — advisory/profile lock assertions.
-- **Коммит исправления:** —
+- **Коммит исправления:** `7f16514`
 
 ## QA-025 — Mock-история раскрывала попытки других пользователей
 
@@ -406,7 +408,7 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Статус:** Fixed
 - **Связанное продуктовое решение:** DEC-021, DEC-023, DEC-027, DEC-035.
 - **Связанный тест:** `tests/integration/create-task.test.ts` — actor isolation и `shares actor-bound runtime history across isolated server module instances`; `tests/integration/submission-pages-authorization.test.tsx`; `tests/unit/application-session.test.ts` — mock identity; `tests/e2e/task-flow.spec.ts` — `mock history is isolated for editor and shared with administrator`.
-- **Коммит исправления:** —
+- **Коммит исправления:** `8cf7dd0`
 
 ## QA-026 — Profile lifecycle database test не повторяется стабильно на одной базе
 
@@ -422,3 +424,54 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Связанный тест:** `tests/database/profile-lifecycle.database.test.ts` — уникальный числовой namespace и исходные lifecycle/concurrency-инварианты; `tests/database/block-profile-timestamps.database.test.ts` — проверка `created_at` для sessions/credentials и profiles; `tests/unit/supabase-profile-lifecycle-repository.test.ts` — безопасная классификация response, transport и malformed failures. Исправление внесено в `supabase/migrations/20261006010000_fix_block_profile_timestamp_race.sql`.
 - **Подтверждение:** без новой миграции оба новых сценария падают с SQLSTATE 23514 на `app_sessions_revoked_at_check` и `profiles_timestamps_check`; полный gate (format:check, lint, typecheck, test, database, test:e2e, build) — pass, 219 секунд, коммит `a65174c`; `tests/database/profile-lifecycle.database.test.ts` — 20 из 20 прогонов подряд на одной базе без reset, retry и ожиданий; `tests/database/block-profile-timestamps.database.test.ts` — 10 из 10.
 - **Коммит исправления:** `a65174c`, `83b40a2`.
+
+## QA-027 — Production OAuth callback не связан с браузером, начавшим вход
+
+- **Дата обнаружения:** 2026-10-07
+- **Источник:** независимый аудит кода и production OAuth integration-тестов
+- **Экран:** `GET /api/bitrix24/oauth/start`, `GET /api/bitrix24/oauth/callback`
+- **Описание до исправления:** start сохраняет одноразовый state hash и возвращает redirect, но не устанавливает browser-binding cookie. Callback проверяет только существование state в общем repository; текущая cookie используется позже исключительно для session rotation. PKCE/browser binding в этом flow отсутствует.
+- **Воспроизведение до исправления:** получить state через start в браузере A; передать еще не использованный callback URL с code/state пользователя A в чистый браузер B. При успешной provider verification callback выдает B app session пользователя A. Существующие integration success-сценарии принимают callback без cookie, что подтверждает отсутствие этой проверки; live exploit на портале не выполнялся.
+- **Ожидаемый результат:** callback без привязки к инициировавшему браузеру отклоняется до consumption/provider/persistence; корректный вход, отказ provider, expiry, replay и session rotation остаются работоспособными.
+- **Приоритет:** Critical — закрыть до deployment
+- **Статус:** Fixed
+- **Связанные решения:** DEC-020, DEC-021, DEC-035, DEC-039.
+- **Доказательства до исправления:** `src/server/auth/production-oauth.ts` — `handleProductionOAuthStart` и `handleProductionOAuthCallback`; прежний `tests/integration/production-oauth-flow.test.ts` — успешный callback с `new Request` без Cookie.
+- **Основание:** [RFC 6749, раздел 10.12](https://www.rfc-editor.org/rfc/rfc6749#section-10.12) требует связать callback с browser context, а не только иметь случайный одноразовый state.
+- **Нужный regression:** два независимых cookie jar, отсутствие/несовпадение binding, отсутствие side effects, успешный callback и replay. Исправление и regression реализованы: `tests/integration/production-oauth-flow.test.ts` — browser proof rejection, две cookie jar, success/rotation, expiry/replay/denial. 33 теста файла прошли 2026-10-11.
+
+- **Исправление:** browser-binding cookie, constant-time comparison до consumption, очистка binding cookie при совпавшем callback без удаления app session cookie; DEC-039.
+- **Коммит исправления:** `3b9f458`.
+
+## QA-028 — Неуспешная mock-попытка отсутствует в истории
+
+- **Дата обнаружения:** 2026-10-07
+- **Источник:** независимая сверка scope и task use case
+- **Экран:** создание задачи и история попыток в development/test
+- **Описание:** `SubmissionStatus` допускает `error`, но `executeCreate` сохраняет только success и timeout/unknown. При `mockScenario=error` возвращается безопасное сообщение без записи. Следующий запрос с тем же ключом вновь выполняет операцию.
+- **Воспроизведение:** отправить корректную форму с `mockScenario=error`, затем открыть историю; записи с ее idempotency key нет.
+- **Ожидаемый результат:** принятая интеграционная попытка сохраняется с `operation_status=error`, actor и безопасными metadata; replay не создает новый внешний вызов и не возвращает success. Ошибки валидации до начала операции должны рассматриваться отдельно.
+- **Приоритет:** High
+- **Статус:** Fixed
+- **Связанные решения:** DEC-013, DEC-027.
+- **Доказательства:** `src/server/services/create-task.ts` — `executeCreate` catch и cached outcome; текущий тест `returns a safe message for an integration error` не проверяет историю.
+- **Исправление:** безопасная error-запись сохраняется с actor и metadata без внешнего ответа, task ID или URL. Replay возвращает прежнюю ошибку без повторного вызова; валидация и недоступный проект не создают попытку. История показывает «Ошибка отправки», явный повтор из формы создает новую попытку с новым ключом. Persistent submissions остаются отдельным slice.
+- **Regression:** `tests/integration/create-task.test.ts` — concurrency/replay, один вызов, actor isolation, safe metadata и preflight errors; 11 тестов прошли 2026-10-11. `tests/e2e/task-flow.spec.ts` — error history и успешная ручная повторная отправка на desktop, iPhone и Android.
+- **Коммит исправления:** `fc99282`.
+
+## QA-029 — Production dependency graph содержит security advisories
+
+- **Дата обнаружения:** 2026-10-07
+- **Источник:** `pnpm audit --prod --json` и сверка upstream advisory
+- **Экран:** production runtime и dependency graph
+- **Описание:** audit завершился с 75 уязвимыми вхождениями: 4 critical, 31 high, 36 moderate, 4 low. Это счетчик dependency graph, а не 75 доказанных атак на приложение. `next@16.2.10` входит в affected range DoS для App Router + Server Actions, которые используются в проекте. `shadcn` помещен в runtime dependencies и приводит CLI/MCP/Express-зависимости в production install.
+- **Ожидаемый результат:** выбрать совместимые исправленные версии по актуальным advisories, обновить lockfile, вынести CLI-only зависимости из production, повторить audit и весь gate. Для оставшихся findings явно зафиксировать применимость и обоснование.
+- **Приоритет:** High — закрыть до deployment
+- **Статус:** Fixed
+- **Связанные решения:** DEC-022, DEC-028, DEC-035.
+- **Доказательства:** `package.json`, `pnpm-lock.yaml`, сводка dependency audit в [отчете](../audits/2026-10-07-project-review.md).
+- **Источник:** [Next.js Server Actions DoS](https://github.com/vercel/next.js/security/advisories/GHSA-m99w-x7hq-7vfj). Патч для этого конкретного advisory начинается с 16.2.11; он не закрывает автоматически остальные advisories.
+- **Ограничение:** advisories для Windows, `next/og`, Image Optimization и Express требуют проверки условий. Windows hosting, `next/og`, `next/image`, custom server и rewrites в текущем source не обнаружены; эксплуатация этих findings не подтверждена.
+- **Исправление 2026-10-11:** `next` и `eslint-config-next` закреплены на 16.3.8; CLI `shadcn` перенесен в devDependencies и обновлен до 4.21.4. Совместимые транзитивные security patches сохранены в lockfile; `pnpm-workspace.yaml` закрепляет исправленные browserslist, baseline-browser-mapping и brace-expansion. Vitest обновлен до 4.1.11 без перехода на major 5.
+- **Проверка:** production audit — 0 advisories; frozen install и полный gate. Итоговые snapshots и применимость остаточного dev-only advisory находятся в [отчете стабилизации](../audits/2026-10-11-stabilization.md).
+- **Остаточный dev-риск:** `braces@3.0.3`, [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), имеет high advisory без upstream patched version. Он отсутствует в production install; найденные пути относятся к ESLint/fast-glob и shadcn, которые работают с доверенными конфигурациями репозитория. Пользовательские HTTP inputs приложения в эти CLI не передаются. Это проверка применимости, а не заявление об исправлении самой библиотеки. При смене способа использования CLI или выходе patch требуется повторная оценка.

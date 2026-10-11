@@ -177,6 +177,33 @@ test("timeout allows an explicit retry with a new attempt", async ({ page }) => 
   await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
 });
 
+test("failed mock attempts appear in history with an error badge", async ({ page }, testInfo) => {
+  const title = `Ошибка в истории ${testInfo.project.name}`;
+  await login(page, "editor");
+  await selectProject(page, "Форма");
+  await page.getByLabel("Название задачи *").fill(title);
+  await openAdditionalParameters(page);
+  await page.getByLabel("Mock-сценарий для проверки").click();
+  await page.getByRole("option", { name: "Ошибка Bitrix24" }).click();
+  const firstKey = await page.locator('input[name="idempotencyKey"]').inputValue();
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Не удалось создать задачу. Попробуйте позже.")).toBeVisible();
+  await expect(page.locator('input[name="idempotencyKey"]')).toHaveValue(firstKey);
+  await page.getByLabel("Название задачи *").fill(`${title} повтор`);
+  await page.getByLabel("Mock-сценарий для проверки").click();
+  await page.getByRole("option", { name: "Успешное создание" }).click();
+  await page.getByRole("button", { name: "Создать задачу", exact: true }).click();
+  await expect(page.getByText("Задача создана", { exact: true })).toBeVisible();
+  await page.goto("/submissions");
+  await expect(page.getByText(title, { exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByText(`${title} повтор`, { exact: true }).filter({ visible: true })).toBeVisible();
+  const failedAttempt =
+    testInfo.project.name === "desktop-chromium"
+      ? page.getByRole("row").filter({ has: page.getByText(title, { exact: true }) })
+      : page.getByText(title, { exact: true }).filter({ visible: true }).locator("..");
+  await expect(failedAttempt.getByText("Ошибка отправки", { exact: true })).toBeVisible();
+});
+
 test("history is compact, has domain statuses and filters by project", async ({ page }) => {
   await login(page);
   await page.goto("/submissions");

@@ -1,0 +1,1352 @@
+{
+  "checkedAt": "2026-10-07",
+  "command": "pnpm audit --prod --json",
+  "vulnerabilities": {
+    "info": 0,
+    "low": 4,
+    "moderate": 36,
+    "high": 31,
+    "critical": 4
+  },
+  "advisories": [
+    {
+      "module_name": "postcss",
+      "severity": "moderate",
+      "title": "PostCSS has XSS via Unescaped </style> in its CSS Stringify Output",
+      "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+      "findings": [
+        {
+          "version": "8.4.31",
+          "paths": [".>geist>next>postcss", ".>next>postcss"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=8.5.10"
+    },
+    {
+      "module_name": "sharp",
+      "severity": "high",
+      "title": "sharp inherited vulnerabilities in libvips: CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591",
+      "url": "https://github.com/advisories/GHSA-f88m-g3jw-g9cj",
+      "findings": [
+        {
+          "version": "0.34.5",
+          "paths": [".>geist>next>sharp", ".>next>sharp"],
+          "dev": false,
+          "optional": true,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=0.35.0"
+    },
+    {
+      "module_name": "next",
+      "severity": "high",
+      "title": "Next.js: Middleware / Proxy bypass in App Router applications using Turbopack and single locale",
+      "url": "https://github.com/advisories/GHSA-6gpp-xcg3-4w24",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "high",
+      "title": "Next.js: Denial of Service in App Router using Server Actions",
+      "url": "https://github.com/advisories/GHSA-m99w-x7hq-7vfj",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "high",
+      "title": "Next.js: Server-Side Request Forgery in Server Actions on custom servers",
+      "url": "https://github.com/advisories/GHSA-89xv-2m56-2m9x",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "moderate",
+      "title": "Next.js: Cache confusion of response bodies for requests with bodies",
+      "url": "https://github.com/advisories/GHSA-68g3-v927-f742",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "moderate",
+      "title": "Next.js: Cache confusion of response bodies for requests with bodies containing invalid UTF-8 byte sequences",
+      "url": "https://github.com/advisories/GHSA-4633-3j49-mh5q",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "moderate",
+      "title": "Next.js: Unbounded Server Action payload in Edge runtime",
+      "url": "https://github.com/advisories/GHSA-4c39-4ccg-62r3",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "high",
+      "title": "Next.js: Server-Side Request Forgery in rewrites via attacker-controlled destination hostname",
+      "url": "https://github.com/advisories/GHSA-p9j2-gv94-2wf4",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "moderate",
+      "title": "Next.js: Denial of Service in the Image Optimization API using SVGs",
+      "url": "https://github.com/advisories/GHSA-q8wf-6r8g-63ch",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "next",
+      "severity": "moderate",
+      "title": "Next.js: Unauthenticated disclosure of internal Server Function endpoints",
+      "url": "https://github.com/advisories/GHSA-955p-x3mx-jcvp",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.2.11"
+    },
+    {
+      "module_name": "postcss",
+      "severity": "high",
+      "title": "PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments",
+      "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+      "findings": [
+        {
+          "version": "8.4.31",
+          "paths": [".>geist>next>postcss", ".>next>postcss"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=8.5.12"
+    },
+    {
+      "module_name": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded expansion length causing an out-of-memory process crash",
+      "url": "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+      "findings": [
+        {
+          "version": "5.0.7",
+          "paths": [".>shadcn>ts-morph>@ts-morph/common>minimatch>brace-expansion"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=5.0.8"
+    },
+    {
+      "module_name": "postcss",
+      "severity": "moderate",
+      "title": "PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset",
+      "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+      "findings": [
+        {
+          "version": "8.4.31",
+          "paths": [".>geist>next>postcss", ".>next>postcss"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        },
+        {
+          "version": "8.5.20",
+          "paths": [".>shadcn>postcss"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=8.5.23"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to downstream response desynchronization via retry interceptor",
+      "url": "https://github.com/advisories/GHSA-8xcm-r25x-g524",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.0"
+    },
+    {
+      "module_name": "undici",
+      "severity": "high",
+      "title": "undici vulnerable to cross-user information disclosure and parse-time crash via degenerate private cache directives",
+      "url": "https://github.com/advisories/GHSA-4cwx-7wf7-3272",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.0"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via backslash authority introducer",
+      "url": "https://github.com/advisories/GHSA-7p8r-x3mc-p8w7",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.5"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "high",
+      "title": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
+      "url": "https://github.com/advisories/GHSA-mwp4-54f8-5fhr",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.3.1"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: a CIDR suffix on the parsed address suppresses special-use classification and can bypass SSRF and trust-boundary checks",
+      "url": "https://github.com/advisories/GHSA-4xrf-jv44-h6hh",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.2.2"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: misclassification of IPv4-mapped/NAT64 IPv6 addresses can bypass SSRF and trust-boundary checks",
+      "url": "https://github.com/advisories/GHSA-22jq-vg5j-6vgg",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.2.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to CRLF Injection via blob-like body 'type' property",
+      "url": "https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.0"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to cross-user information disclosure via whitespace around equals in Cache-Control directives",
+      "url": "https://github.com/advisories/GHSA-jr45-8vmc-qm54",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.0"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to cookie attribute injection via unsanitized domain and unparsed setCookie fields",
+      "url": "https://github.com/advisories/GHSA-v3r7-h72x-cjcm",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.0"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
+      "url": "https://github.com/advisories/GHSA-8j4g-w8fx-2239",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.12.34"
+    },
+    {
+      "module_name": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via unbounded intermediate arrays, bypassing the CVE-2026-14257 mitigation",
+      "url": "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+      "findings": [
+        {
+          "version": "5.0.7",
+          "paths": [".>shadcn>ts-morph>@ts-morph/common>minimatch>brace-expansion"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=5.0.9"
+    },
+    {
+      "module_name": "js-yaml",
+      "severity": "high",
+      "title": "JS-YAML: Quadratic CPU consumption in !!omap resolution (3.x and 4.x) — CVE-2026-59870 fix not backported",
+      "url": "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+      "findings": [
+        {
+          "version": "4.3.0",
+          "paths": [".>shadcn>cosmiconfig>js-yaml"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.3.1"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
+      "url": "https://github.com/advisories/GHSA-f23p-vx2j-j53r",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.12.34"
+    },
+    {
+      "module_name": "hono",
+      "severity": "low",
+      "title": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
+      "url": "https://github.com/advisories/GHSA-79qm-7rj5-m7r9",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.12.34"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: Algorithmic Complexity DoS in Language Middleware",
+      "url": "https://github.com/advisories/GHSA-54fx-42gc-7vw4",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.12.34"
+    },
+    {
+      "module_name": "@hono/node-server",
+      "severity": "moderate",
+      "title": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+      "url": "https://github.com/advisories/GHSA-frvp-7c67-39w9",
+      "findings": [
+        {
+          "version": "1.19.14",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>@hono/node-server"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=1.19.15"
+    },
+    {
+      "module_name": "nanoid",
+      "severity": "high",
+      "title": "nanoid: custom generators can loop indefinitely when size is zero",
+      "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8",
+      "findings": [
+        {
+          "version": "3.3.16",
+          "paths": [".>geist>next>postcss>nanoid", ".>next>postcss>nanoid", ".>shadcn>postcss>nanoid"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.3.18"
+    },
+    {
+      "module_name": "postcss",
+      "severity": "high",
+      "title": "PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure",
+      "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+      "findings": [
+        {
+          "version": "8.4.31",
+          "paths": [".>geist>next>postcss", ".>next>postcss"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=8.5.18"
+    },
+    {
+      "module_name": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+      "findings": [
+        {
+          "version": "4.28.6",
+          "paths": [
+            ".>geist>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-syntax-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/helper-module-transforms>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>browserslist"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.28.7"
+    },
+    {
+      "module_name": "browserslist",
+      "severity": "high",
+      "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+      "findings": [
+        {
+          "version": "4.28.6",
+          "paths": [
+            ".>geist>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-syntax-jsx>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/helper-module-transforms>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist",
+            ".>shadcn>browserslist"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.28.7"
+    },
+    {
+      "module_name": "qs",
+      "severity": "moderate",
+      "title": "qs array-limit bypass via bracket-key comma parsing",
+      "url": "https://github.com/advisories/GHSA-x5fp-wj9c-mxmx",
+      "findings": [
+        {
+          "version": "6.15.3",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>express>body-parser>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>express>body-parser>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>express>qs"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=6.15.4"
+    },
+    {
+      "module_name": "qs",
+      "severity": "moderate",
+      "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+      "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+      "findings": [
+        {
+          "version": "6.15.3",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>express>body-parser>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>express>body-parser>qs",
+            ".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>express>qs"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=6.16.0"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via skipped IDN canonicalization on scheme-relative references",
+      "url": "https://github.com/advisories/GHSA-5jgf-p345-68v8",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.6"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+      "url": "https://github.com/advisories/GHSA-f65p-4m7j-42xc",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.6"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to server-side request forgery via repeated hostname percent-decoding",
+      "url": "https://github.com/advisories/GHSA-fph4-wmhf-6fwf",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.6"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+      "url": "https://github.com/advisories/GHSA-jqff-g426-hqxp",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.6"
+    },
+    {
+      "module_name": "next",
+      "severity": "critical",
+      "title": "Next.js: Unauthenticated Remote Code Execution on windows-hosted servers",
+      "url": "https://github.com/advisories/GHSA-p293-qw3h-jr36",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.3.3"
+    },
+    {
+      "module_name": "baseline-browser-mapping",
+      "severity": "moderate",
+      "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+      "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+      "findings": [
+        {
+          "version": "2.10.43",
+          "paths": [
+            ".>geist>next>baseline-browser-mapping",
+            ".>geist>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>next>baseline-browser-mapping",
+            ".>next>styled-jsx>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-syntax-jsx>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-modules-commonjs>@babel/helper-module-transforms>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/helper-create-class-features-plugin>@babel/helper-replace-supers>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>@babel/preset-typescript>@babel/plugin-transform-typescript>@babel/plugin-syntax-typescript>@babel/core>@babel/helper-compilation-targets>browserslist>baseline-browser-mapping",
+            ".>shadcn>browserslist>baseline-browser-mapping"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=2.11.0"
+    },
+    {
+      "module_name": "sharp",
+      "severity": "high",
+      "title": "sharp: Vulnerabilities in libheif: GHSA-g89c-p67h-r497 and GHSA-2jg2-4ch7-h545",
+      "url": "https://github.com/advisories/GHSA-rgj7-g3m4-5g8c",
+      "findings": [
+        {
+          "version": "0.34.5",
+          "paths": [".>geist>next>sharp", ".>next>sharp"],
+          "dev": false,
+          "optional": true,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=0.35.4"
+    },
+    {
+      "module_name": "js-yaml",
+      "severity": "high",
+      "title": "js-yaml: maxTotalMergeKeys does not limit CPU use for empty merge sources",
+      "url": "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+      "findings": [
+        {
+          "version": "4.3.0",
+          "paths": [".>shadcn>cosmiconfig>js-yaml"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.3.2"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
+      "url": "https://github.com/advisories/GHSA-gqvv-2mrq-wpjv",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.13.5"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
+      "url": "https://github.com/advisories/GHSA-g6gw-c38x-mqfc",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.13.5"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
+      "url": "https://github.com/advisories/GHSA-crvj-82cr-hjcx",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.13.5"
+    },
+    {
+      "module_name": "next",
+      "severity": "critical",
+      "title": "Next.js: Unauthenticated Remote Code Execution in Image Optimization API when AVIF files are used",
+      "url": "https://github.com/advisories/GHSA-2xp9-vwfh-vxw4",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.3.3"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via unhandled error in WebSocket permessage-deflate decompression",
+      "url": "https://github.com/advisories/GHSA-3wwx-pv8p-q78v",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "high",
+      "title": "fast-uri vulnerable to authority injection via an unvalidated port in serialize",
+      "url": "https://github.com/advisories/GHSA-qw65-cvwx-89v3",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.7"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: Address6.isLinkLocal() recognizes fe80::/64 rather than fe80::/10, allowing SSRF and trust-boundary bypass to on-link hosts",
+      "url": "https://github.com/advisories/GHSA-rpw4-54j3-4h4q",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.5.1"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: no classifier recognizes the NAT64 local-use range 64:ff9b:1::/48, allowing SSRF and trust-boundary bypass",
+      "url": "https://github.com/advisories/GHSA-2vr4-cq9g-pvrc",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.5.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via orphaned RetryHandler response body",
+      "url": "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "low",
+      "title": "undici vulnerable to downstream response splitting via retry interceptor",
+      "url": "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "high",
+      "title": "undici vulnerable to Denial of Service via unrequested WebSocket subprotocol",
+      "url": "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via unbounded decompression of compressed responses",
+      "url": "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to cross-user cookie disclosure via Set-Cookie caching in shared caches",
+      "url": "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "low",
+      "title": "undici vulnerable to response truncation via oversized chunked responses in the dump interceptor",
+      "url": "https://github.com/advisories/GHSA-2gqq-gqf2-x968",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "high",
+      "title": "undici vulnerable to TLS certificate validation bypass via dropped connect options in BalancedPool",
+      "url": "https://github.com/advisories/GHSA-w293-vg96-wgc3",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "low",
+      "title": "undici vulnerable to caching and replay of unsafe HTTP method responses",
+      "url": "https://github.com/advisories/GHSA-8436-99hf-9mmv",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "undici",
+      "severity": "moderate",
+      "title": "undici vulnerable to Denial of Service via WebSocketStream unclean close",
+      "url": "https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
+      "findings": [
+        {
+          "version": "7.28.0",
+          "paths": [".>shadcn>@dotenvx/dotenvx>undici", ".>shadcn>undici"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.29.1"
+    },
+    {
+      "module_name": "fast-uri",
+      "severity": "moderate",
+      "title": "fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets",
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+      "findings": [
+        {
+          "version": "3.1.4",
+          "paths": [
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv>fast-uri",
+            ".>shadcn>@dotenvx/dotenvx>conf>ajv-formats>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv>fast-uri",
+            ".>shadcn>@modelcontextprotocol/sdk>ajv-formats>ajv>fast-uri"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.1.8"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: isInSubnet() and isHostInSubnet() compare addresses of different families as if they shared an address space, allowing an allowlist check to admit an address outside its range",
+      "url": "https://github.com/advisories/GHSA-j6r3-76f7-8jcv",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.7.1"
+    },
+    {
+      "module_name": "ip-address",
+      "severity": "moderate",
+      "title": "ip-address: Address6 builds a parse diagnostic proportional to the input with no length bound, allowing a single long string to stall or crash the process",
+      "url": "https://github.com/advisories/GHSA-h3mg-xc3c-68pw",
+      "findings": [
+        {
+          "version": "10.2.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>ip-address"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=10.7.1"
+    },
+    {
+      "module_name": "brace-expansion",
+      "severity": "moderate",
+      "title": "brace-expansion: Quadratic-time expansion of the `{a},b}` rewrite causes CPU denial of service",
+      "url": "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+      "findings": [
+        {
+          "version": "5.0.7",
+          "paths": [".>shadcn>ts-morph>@ts-morph/common>minimatch>brace-expansion"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=5.0.12"
+    },
+    {
+      "module_name": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion on nested brace groups causing stack exhaustion",
+      "url": "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+      "findings": [
+        {
+          "version": "5.0.7",
+          "paths": [".>shadcn>ts-morph>@ts-morph/common>minimatch>brace-expansion"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=5.0.11"
+    },
+    {
+      "module_name": "brace-expansion",
+      "severity": "high",
+      "title": "brace-expansion: DoS via uncontrolled recursion in parseCommaParts causing stack exhaustion",
+      "url": "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+      "findings": [
+        {
+          "version": "5.0.7",
+          "paths": [".>shadcn>ts-morph>@ts-morph/common>minimatch>brace-expansion"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=5.0.10"
+    },
+    {
+      "module_name": "next",
+      "severity": "critical",
+      "title": "Next.js: Remote Code Execution in next/og ImageResponse",
+      "url": "https://github.com/advisories/GHSA-vcvr-r3jv-pc5j",
+      "findings": [
+        {
+          "version": "16.2.10",
+          "paths": [".>geist>next", ".>next"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=16.3.6"
+    },
+    {
+      "module_name": "hono",
+      "severity": "moderate",
+      "title": "hono/jsx renders plain strings unescaped in boundary components, leading to XSS",
+      "url": "https://github.com/advisories/GHSA-hxh3-vqpv-xpqv",
+      "findings": [
+        {
+          "version": "4.12.31",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>@hono/node-server>hono",
+            ".>shadcn>@modelcontextprotocol/sdk>hono"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=4.13.7"
+    },
+    {
+      "module_name": "braces",
+      "severity": "high",
+      "title": "braces vulnerable to stack-exhaustion denial of service through deeply nested patterns",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+      "findings": [
+        {
+          "version": "3.0.3",
+          "paths": [
+            ".>shadcn>fast-glob>micromatch>braces",
+            ".>shadcn>ts-morph>@ts-morph/common>fast-glob>micromatch>braces"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=3.0.4"
+    },
+    {
+      "module_name": "source-map-js",
+      "severity": "high",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "findings": [
+        {
+          "version": "1.2.1",
+          "paths": [
+            ".>geist>next>postcss>source-map-js",
+            ".>next>postcss>source-map-js",
+            ".>shadcn>postcss>source-map-js"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=1.2.2"
+    },
+    {
+      "module_name": "proxy-addr",
+      "severity": "critical",
+      "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+      "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h",
+      "findings": [
+        {
+          "version": "2.0.7",
+          "paths": [
+            ".>shadcn>@modelcontextprotocol/sdk>express>proxy-addr",
+            ".>shadcn>@modelcontextprotocol/sdk>express-rate-limit>express>proxy-addr"
+          ],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=2.0.8"
+    },
+    {
+      "module_name": "postcss-selector-parser",
+      "severity": "moderate",
+      "title": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
+      "url": "https://github.com/advisories/GHSA-rj75-hqrm-r3gf",
+      "findings": [
+        {
+          "version": "7.1.4",
+          "paths": [".>shadcn>postcss-selector-parser"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=7.1.6"
+    },
+    {
+      "module_name": "sharp",
+      "severity": "high",
+      "title": "sharp : Vulnerability in librsvg dependency CVE-2026-96889",
+      "url": "https://github.com/advisories/GHSA-wq5f-xc86-pv6w",
+      "findings": [
+        {
+          "version": "0.34.5",
+          "paths": [".>geist>next>sharp", ".>next>sharp"],
+          "dev": false,
+          "optional": true,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=0.35.5"
+    },
+    {
+      "module_name": "@modelcontextprotocol/sdk",
+      "severity": "high",
+      "title": "MCP TypeScript SDK: OAuth client could send credentials to an authorization server chosen by the MCP server",
+      "url": "https://github.com/advisories/GHSA-6qxp-vccf-f47h",
+      "findings": [
+        {
+          "version": "1.29.0",
+          "paths": [".>shadcn>@modelcontextprotocol/sdk"],
+          "dev": false,
+          "optional": false,
+          "bundled": false
+        }
+      ],
+      "patched_versions": ">=1.31.0"
+    }
+  ]
+}

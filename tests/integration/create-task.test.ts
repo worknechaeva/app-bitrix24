@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clearRuntimeSubmissions, createTask, listSubmissions } from "@/server/services/create-task";
+import * as taskClients from "@/integrations/bitrix24/composition-root";
+import { Bitrix24Error } from "@/integrations/bitrix24/errors";
 import type { TaskCreateRequest } from "@/features/tasks/schema";
 
 const administrator = { profileId: "mock-admin", role: "administrator" as const };
@@ -23,7 +25,10 @@ function input(overrides: Partial<TaskCreateRequest> = {}): TaskCreateRequest {
 
 describe("createTask service", () => {
   beforeEach(() => clearRuntimeSubmissions());
-  afterEach(() => vi.unstubAllEnvs());
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
 
   it("returns the same successful task for duplicate requests", async () => {
     const values = input();
@@ -77,6 +82,55 @@ describe("createTask service", () => {
   it("returns a safe message for an integration error", async () => {
     const result = await createTask(input({ mockScenario: "error" }), administrator);
     expect(result).toEqual({ status: "error", message: "Не удалось создать задачу. Попробуйте позже." });
+  });
+
+  it("stores safe errors for the actor and replays them without another client call", async () => {
+    const create = vi
+      .fn()
+      .mockRejectedValue(new Bitrix24Error("BITRIX_UNAVAILABLE", "unsafe provider token secret"));
+    vi.spyOn(taskClients, "getBitrix24TaskClient").mockReturnValue({ createTask: create });
+    const values = input({
+      projectId: "forma",
+      mockScenario: "error",
+      files: [{ name: "brief.pdf", size: 2048, type: "application/pdf" }],
+    });
+    const [first, concurrent] = await Promise.all([createTask(values, editor), createTask(values, editor)]);
+    const replay = await createTask(values, editor);
+    expect(first).toEqual({ status: "error", message: "Не удалось создать задачу. Попробуйте позже." });
+    expect(concurrent).toEqual(first);
+    expect(replay).toEqual(first);
+    expect(create).toHaveBeenCalledOnce();
+    const history = listSubmissions(editor).filter(
+      ({ idempotencyKey }) => idempotencyKey === values.idempotencyKey,
+    );
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      operationStatus: "error",
+      taskStatus: "unknown",
+      message: first.status === "error" ? first.message : "",
+      files: values.files,
+    });
+    expect(history[0]).not.toHaveProperty("bitrixTaskId");
+    expect(history[0]).not.toHaveProperty("bitrixTaskUrl");
+    expect(JSON.stringify(history)).not.toContain("unsafe provider token secret");
+    expect(listSubmissions(administrator)).toContainEqual(history[0]);
+    expect(listSubmissions(secondEditor)).not.toContainEqual(history[0]);
+    await createTask(values, secondEditor);
+    expect(create).toHaveBeenCalledOnce();
+  });
+
+  it("keeps validation and project rejection out of integration history", async () => {
+    const factory = vi.spyOn(taskClients, "getBitrix24TaskClient");
+    const invalid = input({ title: "" });
+    const inaccessible = input({ projectId: "missing" });
+    await createTask(invalid, editor);
+    await createTask(inaccessible, editor);
+    expect(factory).not.toHaveBeenCalled();
+    expect(
+      listSubmissions(administrator).some(({ idempotencyKey }) =>
+        [invalid.idempotencyKey, inaccessible.idempotencyKey].includes(idempotencyKey),
+      ),
+    ).toBe(false);
   });
 
   it("fails closed in production even when user input asks for mock success", async () => {

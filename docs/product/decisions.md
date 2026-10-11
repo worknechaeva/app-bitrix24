@@ -208,7 +208,7 @@
 - **Статус:** Active
 - **Контекст:** У пользователя нет Supabase Auth session или JWT, а Bitrix24 OAuth credentials нельзя передавать браузеру.
 - **Решение:** После успешного OAuth callback сервер выполняет session rotation и создает собственную сессию. Браузер получает только случайный непрозрачный token в cookie с production-флагами `HttpOnly`, `Secure` и `SameSite=Lax`; в `app_sessions` хранится только hash. OAuth state одноразово хранится как hash в `oauth_transactions`.
-- **Последствия:** Session token недоступен JavaScript, сырой token не хранится в БД, а cookie не содержит profile ID, Bitrix user ID, OAuth token или роль. Logout и блокировка profile отзывают серверные сессии; истекшие и отозванные записи очищаются технической процедурой. Return path разрешается только из безопасного набора внутренних маршрутов.
+- **Последствия:** Session token недоступен JavaScript, сырой token не хранится в БД, а cookie не содержит profile ID, Bitrix user ID, OAuth token или роль. Logout и блокировка profile отзывают серверные сессии; для истекших и отозванных записей требуется техническая cleanup-процедура; она пока не реализована. Return path разрешается только из безопасного набора внутренних маршрутов.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -310,7 +310,7 @@
 - **Статус:** Active
 - **Контекст:** После доверенной проверки portal identity и active employee admission локальная identity должна создаваться конкурентно-безопасно, не позволяя повторному OAuth-входу изменить локальные полномочия или реактивировать заблокированный profile.
 - **Решение:** `profiles` использует внутренний UUID, внешний unique key `portal_installation_id + bitrix_user_id`, text role с `CHECK` для `editor/administrator`, `is_active` и минимальные snapshots `bitrix_active/bitrix_user_type`. Одна `SECURITY INVOKER` PostgreSQL RPC принимает только уже проверенный active employee, атомарно создает `editor`, обновляет только snapshots и verification timestamp и возвращает отдельный результат `inactive` без изменения role или `is_active`.
-- **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Production OAuth callback integration реализована локально по DEC-035; bootstrap administrator, role management, last-admin guard и административная блокировка остаются будущими. Удаленная Supabase schema не изменялась.
+- **Последствия:** Конкурентные вызовы для одной identity создают ровно одну строку; полностью совпадающий snapshot не изменяет `updated_at`. RLS включена без policies, права `PUBLIC`, `anon` и `authenticated` отозваны, а server-only adapter использует существующий privileged gateway и нормализует ошибки. Production OAuth callback integration реализована локально по DEC-035; bootstrap administrator, role management, last-admin guard и административная блокировка реализованы локально по DEC-036. Удаленная Supabase schema не изменялась.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -350,7 +350,7 @@
 - **Статус:** Active
 - **Контекст:** Persistent portal, profile, OAuth transaction, encrypted credentials и app session foundations были изолированными slices и не образовывали production authentication contour. Повторный verified OAuth login не мог безопасно заменить существующую encrypted pair.
 - **Решение:** Production OAuth использует отдельную live configuration и live `Bitrix24IdentityClient`, persistent hash-only state, trusted provider verification `member_id`/`app`/`user_brief`/current active employee, portal и profile reconciliation, узкий version-safe verified OAuth credentials create/replacement, rotation browser session и cookie `__Host-task-launcher-session` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`. Actor разрешается только через persistent app session; logout отзывает session и всегда очищает cookie. Mock auth остается development/test-only.
-- **Последствия:** `reauth_required` может вернуться в `active` только после нового verified OAuth login; `disabled` автоматически не реактивируется. Production callback не выполняет immediate provider refresh. Пока persistent launcher projects, Directory и submissions не подключены, live authenticated UI показывает безопасный placeholder и не выдает mock business data. Remote Supabase, deployment и test portal не изменялись, поэтому решение не означает завершенный production deployment.
+- **Последствия:** `reauth_required` может вернуться в `active` только после нового verified OAuth login; `disabled` автоматически не реактивируется. Production callback не выполняет immediate provider refresh. Persistent launcher projects и Directory подключены локально по DEC-025, DEC-037 и DEC-038. Остальные business-страницы до persistent submissions и live task creation показывают безопасный placeholder и не выдают mock business data. Remote Supabase, deployment и test portal не изменялись, поэтому решение не означает завершенный production deployment.
 - **Связанные QA-записи:** —
 - **Заменяет:** —
 
@@ -385,3 +385,13 @@
 - **Последствия:** Одновременные и последовательные повторы одного create не создают дубликаты; другой owner может использовать такое же значение ключа без доступа к чужой записи; измененный payload отклоняется. Сбой обновления списка показывает подтвержденный success и отдельное действие чтения, а ошибка transport снимает pending и сохраняет форму для безопасного явного повтора.
 - **Связанные QA-записи:** QA-023.
 - **Заменяет:** уточняет DEC-025 без изменения ownership и Directory-проверок.
+
+## DEC-039 — Browser binding production OAuth
+
+- **Дата:** 2026-10-11
+- **Статус:** Active
+- **Контекст:** Одноразовый database state не запрещал передать первый callback другому браузеру (QA-027).
+- **Решение:** Production start связывает state с browser через `__Host-task-launcher-oauth-state`, HttpOnly/Secure/SameSite=Lax, Path=/, без Domain, с expiry persistent transaction. Callback требует одну matching canonical cookie и сравнивает ее в constant time до consumption и provider/persistence.
+- **Последствия:** Чужой браузер не consuming state и не получает session; новая успешная попытка входа заменяет предыдущую незавершенную попытку того же браузера. Совпавший callback очищает binding независимо от success, denial, expiry, replay или контролируемой ошибки; success отдельно устанавливает app session. Schema, token encryption и admission не меняются.
+- **Связанные QA-записи:** QA-027.
+- **Заменяет:** уточняет DEC-021 и DEC-035.

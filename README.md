@@ -4,6 +4,8 @@
 
 Канонический индекс продуктовой, архитектурной и QA-документации находится в [docs/README.md](./docs/README.md). Действующее требуемое поведение зафиксировано в [docs/product/current-scope.md](./docs/product/current-scope.md), а известные расхождения текущего интерфейса — в [docs/qa/findings.md](./docs/qa/findings.md).
 
+Исходная карта готовности, состояние Git и незавершенные работы зафиксированы в [аудите от 2026-10-07](./docs/audits/2026-10-07-project-review.md). QA-027–QA-029 закрыты в [стабилизации от 2026-10-11](./docs/audits/2026-10-11-stabilization.md). Проект готов к продолжению локальной разработки; Milestone 2 и production readiness еще требуют persistent submissions и проверки deployment.
+
 ## Что уже работает
 
 - закрытый dev-only вход под mock-администратором или редактором;
@@ -12,13 +14,13 @@
 - отдельные server-only контракты `Bitrix24IdentityClient`, `Bitrix24DirectoryClient` и `Bitrix24TaskClient`;
 - `MockBitrix24TaskClient` в development/test и `DisabledBitrix24TaskClient` с безопасным `task_creation_disabled` в production;
 - сценарии успешного ответа, ошибки Bitrix24 и неизвестного статуса после timeout;
-- защита от двойной отправки по idempotency key и ручной повтор после timeout с новым ключом;
+- защита от двойной отправки по idempotency key и ручной повтор после error/timeout с новым ключом;
 - компактная история с доменными статусами и фильтром по проекту;
 - персональные проекты: owner редактирует свои настройки, administrator видит все и архивирует чужие;
 - безопасный повтор создания проекта с тем же ключом операции и отдельное обновление списка после сбоя чтения;
 - mock-экраны пользователей и состояния интеграции;
 - PWA manifest, иконки и инструкция по установке;
-- unit/integration-тесты, Playwright E2E и GitHub Actions.
+- unit/integration-тесты, Playwright E2E, PostgreSQL/pgTAP security/concurrency проверки и GitHub Actions.
 
 Данные mock-сценария хранятся только в памяти процесса и сбрасываются после перезапуска dev-сервера.
 
@@ -53,7 +55,7 @@ pnpm dev
 В форме новой задачи доступны фиктивные проекты «Технарост» и «Форма». Раскройте блок «Дополнительные параметры», чтобы выбрать проверочный сценарий:
 
 - успешное создание возвращает mock-ID и безопасную ссылку;
-- ошибка показывает нормализованное сообщение без внешнего ответа;
+- ошибка показывает нормализованное сообщение без внешнего ответа и сохраняет безопасную попытку в истории; явный повтор получает новый ключ;
 - timeout оставляет статус неизвестным, запрещает автоматический повтор и предлагает новую ручную попытку после проверки портала.
 
 Вложения в mock-режиме реально не загружаются: сервер проверяет тип и лимит 20 МБ, а в операции сохраняются только имя, размер и MIME type. Изменения проектов и история новых операций находятся в памяти процесса и сбрасываются после перезапуска.
@@ -77,6 +79,8 @@ pnpm exec playwright install chromium webkit
 
 Playwright проверяет основной сценарий и manifest в desktop Chromium, iPhone WebKit и Android Chromium.
 
+Проверки build и E2E выполняйте последовательно. После обновления Next.js остановите прежний dev server перед запуском E2E. Если dev server сообщает об ошибке чтения generated JSON manifest, после его остановки можно удалить только `.next/dev` и повторить проверку с холодным cache; промежуточный сбой и итог повторной проверки нужно сохранять в отчете.
+
 ## Структура
 
 ```text
@@ -88,10 +92,13 @@ src/
   lib/env/                     server-side валидация environment
   server/                      fixtures, auth guard, repositories, file boundary и use cases
 tests/
-  unit/                        схемы и mock-клиент
-  integration/                 task use case и idempotency
+  unit/                        схемы, UI, auth, storage и integration boundaries
+  integration/                 OAuth, authorization, project/task use cases и idempotency
+  database/                    PostgreSQL repositories и concurrency
   e2e/                         desktop/iPhone/Android smoke flows
 ```
+
+Database-проверки требуют отдельного локального Supabase stack: committed migrations, `pnpm exec supabase test db --local supabase/tests/database` и `pnpm test:database` с локальными `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`. Не запускайте reset на базе с данными владельца; CI использует изолированную базу. После работы остановите тестовый stack и Colima по правилам AGENTS.md.
 
 Краткий план milestone описан в [PLAN.md](./PLAN.md), устойчивые технические границы — в [docs/architecture.md](./docs/architecture.md), правила работы с репозиторием — в [AGENTS.md](./AGENTS.md).
 

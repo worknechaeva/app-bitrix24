@@ -11,6 +11,7 @@ import {
   handleProductionOAuthCallback,
   handleProductionOAuthInstall,
   handleProductionOAuthStart,
+  OAUTH_BROWSER_COOKIE_NAME,
   type ProductionOAuthRuntime,
 } from "@/server/auth/production-oauth";
 import { APPLICATION_SESSION_COOKIE_NAME } from "@/server/auth/session-cookie";
@@ -164,7 +165,7 @@ function makeRuntime() {
   const runtime: ProductionOAuthRuntime = {
     config,
     identityClient: identity,
-    stateService: new OAuthStateService(oauthRepository, () => Buffer.alloc(32, 0xab)),
+    stateService: new OAuthStateService(oauthRepository),
     portalRepository,
     profileRepository,
     profileLifecycleRepository,
@@ -208,6 +209,12 @@ describe("production OAuth start", () => {
     expect(oauthRepository.stateHash).not.toBe(state);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("referrer-policy")).toBe("no-referrer");
+    const cookie = response.headers.get("set-cookie")!;
+    expect(cookie).toContain(`${OAUTH_BROWSER_COOKIE_NAME}=${state};`);
+    expect(cookie).toContain("HttpOnly; Secure; SameSite=Lax");
+    expect(cookie).toContain("Path=/");
+    expect(cookie).toContain("Expires=Tue, 11 Aug 2026 12:10:00 GMT");
+    expect(cookie).not.toContain("Domain=");
   });
 
   it.each(["https://evil.example", "//evil.example", "/%2f%2fevil", "/\\evil"])(
@@ -226,13 +233,21 @@ describe("production OAuth start", () => {
   );
 });
 
+function callbackRequest(url: string, init?: RequestInit): Request {
+  const headers = new Headers(init?.headers);
+  const state = new URL(url).searchParams.get("state") ?? "";
+  const previous = headers.get("cookie");
+  headers.set("cookie", `${OAUTH_BROWSER_COOKIE_NAME}=${state}${previous ? `; ${previous}` : ""}`);
+  return new Request(url, { ...init, headers });
+}
+
 describe("production OAuth callback", () => {
   it.each([
     "https://launcher.example/api/bitrix24/oauth/callback?code=code",
     "https://launcher.example/api/bitrix24/oauth/callback?state=one&state=two&code=code",
   ])("rejects missing or duplicate state before provider work", async (url) => {
     const { runtime, identity } = makeRuntime();
-    const response = await handleProductionOAuthCallback(new Request(url), runtime);
+    const response = await handleProductionOAuthCallback(callbackRequest(url), runtime);
     expect(response.status).toBe(400);
     expect(identity.exchangeAuthorizationCode).not.toHaveBeenCalled();
   });
@@ -241,11 +256,13 @@ describe("production OAuth callback", () => {
     const { runtime, identity } = makeRuntime();
     const state = await issueState(runtime);
     const denied = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&error=access_denied`),
+      callbackRequest(
+        `https://launcher.example/api/bitrix24/oauth/callback?state=${state}&error=access_denied`,
+      ),
       runtime,
     );
     const replay = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(denied.status).toBe(400);
@@ -261,7 +278,9 @@ describe("production OAuth callback", () => {
     const { runtime, oauthRepository, identity } = makeRuntime();
     oauthRepository.consumeOutcome = { outcome };
     const response = await handleProductionOAuthCallback(
-      new Request("https://launcher.example/api/bitrix24/oauth/callback?state=state&code=code"),
+      callbackRequest(
+        `https://launcher.example/api/bitrix24/oauth/callback?state=${"a".repeat(43)}&code=code`,
+      ),
       runtime,
     );
     await expect(response.json()).resolves.toMatchObject({ reasonCode });
@@ -275,7 +294,7 @@ describe("production OAuth callback", () => {
   ])("rejects missing or duplicate code after consuming state", async (urlForState) => {
     const { runtime, identity } = makeRuntime();
     const state = await issueState(runtime);
-    const response = await handleProductionOAuthCallback(new Request(urlForState(state)), runtime);
+    const response = await handleProductionOAuthCallback(callbackRequest(urlForState(state)), runtime);
     expect(response.status).toBe(400);
     expect(identity.exchangeAuthorizationCode).not.toHaveBeenCalled();
   });
@@ -285,7 +304,7 @@ describe("production OAuth callback", () => {
     identity.permissions = ["tasks"];
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(400);
@@ -306,7 +325,7 @@ describe("production OAuth callback", () => {
       identity.user = { ...identity.user, ...userOverrides };
       const state = await issueState(runtime);
       const response = await handleProductionOAuthCallback(
-        new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+        callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
         runtime,
       );
       expect(response.status).toBe(expectedStatus);
@@ -320,7 +339,7 @@ describe("production OAuth callback", () => {
     const state = await issueState(runtime, "/settings");
     const previousToken = Buffer.alloc(32, 0xee).toString("base64url");
     const response = await handleProductionOAuthCallback(
-      new Request(
+      callbackRequest(
         `https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=secret-code&redirect=https://evil.example`,
         {
           headers: { Cookie: `${APPLICATION_SESSION_COOKIE_NAME}=${previousToken}` },
@@ -359,7 +378,7 @@ describe("production OAuth callback", () => {
     runtime.bootstrapAdminBitrixUserId = "42";
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(302);
@@ -382,7 +401,7 @@ describe("production OAuth callback", () => {
     runtime.bootstrapAdminBitrixUserId = "99";
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(302);
@@ -395,13 +414,14 @@ describe("production OAuth callback", () => {
     vi.mocked(credentials.inspectForVerifiedOAuth).mockResolvedValueOnce({ outcome: "disabled" });
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(403);
     expect(profileLifecycleRepository.bootstrapFirstAdministrator).not.toHaveBeenCalled();
     expect(sessions.create).not.toHaveBeenCalled();
-    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("set-cookie")).not.toContain(`${APPLICATION_SESSION_COOKIE_NAME}=`);
+    expect(response.headers.get("set-cookie")).toContain(`${OAUTH_BROWSER_COOKIE_NAME}=;`);
   });
 
   it("rejects a locally inactive reconciled profile before credentials and session", async () => {
@@ -412,7 +432,7 @@ describe("production OAuth callback", () => {
     });
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(403);
@@ -425,11 +445,12 @@ describe("production OAuth callback", () => {
     vi.mocked(sessions.create).mockResolvedValueOnce({ outcome: "profile_inactive" });
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`),
       runtime,
     );
     expect(response.status).toBe(403);
-    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("set-cookie")).not.toContain(`${APPLICATION_SESSION_COOKIE_NAME}=`);
+    expect(response.headers.get("set-cookie")).toContain(`${OAUTH_BROWSER_COOKIE_NAME}=;`);
   });
 
   it("fails closed when old-session revocation fails", async () => {
@@ -437,7 +458,7 @@ describe("production OAuth callback", () => {
     vi.mocked(sessions.revoke).mockRejectedValueOnce(new Error("storage detail"));
     const state = await issueState(runtime);
     const response = await handleProductionOAuthCallback(
-      new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`, {
+      callbackRequest(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`, {
         headers: {
           Cookie: `${APPLICATION_SESSION_COOKIE_NAME}=${Buffer.alloc(32, 1).toString("base64url")}`,
         },
@@ -446,7 +467,76 @@ describe("production OAuth callback", () => {
     );
     expect(response.status).toBe(500);
     expect(sessions.create).not.toHaveBeenCalled();
-    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.headers.get("set-cookie")).not.toContain(`${APPLICATION_SESSION_COOKIE_NAME}=`);
+    expect(response.headers.get("set-cookie")).toContain(`${OAUTH_BROWSER_COOKIE_NAME}=;`);
+  });
+});
+
+describe("OAuth browser binding regression", () => {
+  it.each(["missing", "different", "duplicate", "malformed"])(
+    "rejects %s browser proof before consuming state or changing authority",
+    async (proof) => {
+      const { runtime, oauthRepository, identity, portalRepository, credentials, sessions } = makeRuntime();
+      const state = await issueState(runtime);
+      const headers = new Headers();
+      if (proof !== "missing") {
+        const value = proof === "different" ? "z".repeat(43) : proof === "malformed" ? "bad" : state;
+        headers.set("cookie", `${OAUTH_BROWSER_COOKIE_NAME}=${value}`);
+        if (proof === "duplicate") headers.append("cookie", `; ${OAUTH_BROWSER_COOKIE_NAME}=${state}`);
+      }
+      const consume = vi.spyOn(oauthRepository, "consume");
+      const response = await handleProductionOAuthCallback(
+        new Request(`https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`, {
+          headers,
+        }),
+        runtime,
+      );
+      expect(response.status).toBe(400);
+      expect(consume).not.toHaveBeenCalled();
+      expect(identity.exchangeAuthorizationCode).not.toHaveBeenCalled();
+      expect(portalRepository.reconcileTrustedIdentity).not.toHaveBeenCalled();
+      expect(credentials.inspectForVerifiedOAuth).not.toHaveBeenCalled();
+      expect(sessions.revoke).not.toHaveBeenCalled();
+      expect(sessions.create).not.toHaveBeenCalled();
+      expect(response.headers.get("set-cookie")).toBeNull();
+      expect(JSON.stringify(await response.json())).not.toContain(state);
+    },
+  );
+
+  it("accepts only the initiating cookie jar and preserves its state after another browser fails", async () => {
+    const { runtime, sessions, identity } = makeRuntime();
+    const started = await handleProductionOAuthStart(
+      new Request("https://launcher.example/api/bitrix24/oauth/start"),
+      runtime,
+    );
+    const state = new URL(started.headers.get("location")!).searchParams.get("state")!;
+    const jarA = started.headers.get("set-cookie")!.split(";", 1)[0]!;
+    const callback = `https://launcher.example/api/bitrix24/oauth/callback?state=${state}&code=code`;
+    const browserB = await handleProductionOAuthCallback(new Request(callback), runtime);
+    expect(browserB.status).toBe(400);
+    expect(identity.exchangeAuthorizationCode).not.toHaveBeenCalled();
+    const browserA = await handleProductionOAuthCallback(
+      new Request(callback, { headers: { Cookie: jarA } }),
+      runtime,
+    );
+    expect(browserA.status).toBe(302);
+    expect(sessions.create).toHaveBeenCalledOnce();
+    const cookies = browserA.headers.getSetCookie();
+    expect(cookies).toHaveLength(2);
+    expect(cookies.some((cookie) => cookie.startsWith(`${APPLICATION_SESSION_COOKIE_NAME}=`))).toBe(true);
+    expect(
+      cookies.some(
+        (cookie) => cookie.startsWith(`${OAUTH_BROWSER_COOKIE_NAME}=;`) && cookie.includes("1970"),
+      ),
+    ).toBe(true);
+    expect(cookies.join(";")).not.toContain(state);
+    const replay = await handleProductionOAuthCallback(
+      new Request(callback, { headers: { Cookie: jarA } }),
+      runtime,
+    );
+    expect(replay.status).toBe(400);
+    expect(sessions.create).toHaveBeenCalledOnce();
+    expect(identity.exchangeAuthorizationCode).toHaveBeenCalledOnce();
   });
 });
 

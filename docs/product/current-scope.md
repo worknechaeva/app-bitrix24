@@ -1,6 +1,12 @@
 # Текущий продуктовый scope
 
-Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, зашифрованных `bitrix24_user_credentials` и персональных `launcher_projects`, законченный локальный production OAuth authentication contour, security contour administrator/profile lifecycle и production Directory adapter. Remote Supabase schema, deployment и live task creation не изменялись; persistent submissions еще не подключены.
+Этот документ фиксирует действующее требуемое поведение Task Launcher и утвержденные границы Milestone 2. Это не хронология обсуждений. Реализованы три server-only контракта интеграции, development/test mock создания задач, production fail-closed, persistent storage slices для `portal_installations`, `profiles`, `oauth_transactions`, `app_sessions`, зашифрованных `bitrix24_user_credentials` и персональных `launcher_projects`, локальный production OAuth authentication contour, security contour administrator/profile lifecycle и production Directory adapter. Remote Supabase schema, deployment и live task creation не изменялись; persistent submissions еще не подключены.
+
+## Подтвержденное состояние реализации
+
+Milestone 2 остается в работе. Server-side profile lifecycle реализован, но live UI управления пользователями еще показывает placeholder. Cleanup sessions/OAuth transactions и automatic provider refresh отсутствуют. OAuth state одноразов, хранится как hash и привязан к браузеру через краткоживущую HttpOnly cookie (QA-027 исправлена). В mock история сохраняет success/error/unknown с actor isolation; replay возвращает сохраненный outcome без повторного вызова (QA-028 исправлена). Production зависимости обновлены, audit показывает 0 advisories (QA-029 исправлена); оставшийся dev-only advisory без upstream patch отдельно описан в отчете стабилизации.
+
+Исходный снимок находится в [аудите от 2026-10-07](../audits/2026-10-07-project-review.md); исправления, проверки, очистка Git и актуальная точка продолжения — в [отчете стабилизации от 2026-10-11](../audits/2026-10-11-stabilization.md).
 
 ## Формат продукта и портал
 
@@ -33,6 +39,7 @@
 - Persistent OAuth transaction создается server-only из 32 случайных байтов, кодированных `base64url`; в repository и БД передается только полный lowercase SHA-256 hash. Database time задает TTL ровно 10 минут.
 - `return_path` канонизируется как root-relative внутренний путь; внешние URL, protocol-relative пути, backslash, control characters и опасные percent-encoded разделители отклоняются.
 - Consumption выполняется одной атомарной PostgreSQL RPC. Неизвестный, просроченный и уже использованный state возвращают отдельные outcomes без `return_path`; при конкурентных callback только один получает `consumed`.
+- Production OAuth start устанавливает `__Host-task-launcher-oauth-state` с `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, без `Domain`; expiry совпадает с database expiry state (10 минут). Callback сравнивает единственную cookie с canonical state в constant time до consumption/provider/persistence. Отсутствующая, повторенная, malformed или несовпадающая cookie дает безопасный `invalid_state` без side effects. После совпавшего callback cookie очищается при success, provider denial, expired/reused state и контролируемой ошибке. Последний успешный start в браузере заменяет прежнюю незавершенную попытку.
 - Production OAuth start использует persistent OAuth transaction; callback атомарно consuming state до обработки provider error/code и продолжает flow только для outcome `consumed`.
 - Persistent app session foundation создает server-only token из 32 случайных байтов в `base64url`, передает в repository и БД только полный lowercase SHA-256 hash и использует database time для абсолютного TTL ровно 30 дней. Sliding expiration отсутствует, обычный resolve не изменяет expiry.
 - Session создается только для текущего active profile с допустимыми Bitrix snapshots. Resolve возвращает минимальный server-side actor context с актуальной ролью из profile; unknown, expired, revoked и profile inactive не раскрывают actor identity. Отзыв одной session атомарно устанавливает `revoked_at` один раз.
@@ -170,10 +177,10 @@ Identity имеет live-реализацию. Production `Bitrix24DirectoryClie
 - Каждая явная попытка создает отдельную `task_submissions` и отдельный idempotency key.
 - Editor видит только собственную историю; administrator видит общую историю.
 - В development/test каждая seeded и runtime submission имеет явного автора попытки. Главная страница и `/submissions` получают actor только из проверенной server-side mock session и фильтруют историю до сортировки и ограничения блока последних задач.
-- Безопасные error-попытки сохраняются.
+- Безопасные error-попытки после вызова mock-интеграции сохраняются с actor и metadata, без внешнего ответа и фиктивного task ID/URL. Replay с тем же ключом возвращает прежнюю ошибку без нового вызова. Валидация и недоступный проект до вызова интеграции не создают запись. В истории error показан как «Ошибка отправки»; UI-модель `TaskStatus` сохраняется.
 - `operation_status` принимает только `pending`, `success`, `error` и `unknown`.
 - Timeout дает `unknown`; автоматический retry запрещен.
-- Ручной retry создает новую попытку и новый idempotency key.
+- Ручной retry после error или unknown создает новую попытку и новый idempotency key. Потерянный ответ без подтвержденного outcome сохраняет прежний ключ.
 - В development/test process-wide runtime cache и незавершенная операция по idempotency key разделяются между server bundles, но привязаны к текущему actor; другой actor не получает результат чужой попытки.
 - Success, `bitrix_task_id` и поля синхронизации может изменять только server-only integration layer.
 - `task_submission_files` хранит только безопасные metadata без бинарного содержимого и `content_sha256`.

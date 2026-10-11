@@ -1,5 +1,7 @@
 import "server-only";
 
+import { timingSafeEqual } from "node:crypto";
+
 import { Bitrix24AuthError, type Bitrix24AuthReasonCode } from "@/integrations/bitrix24/auth-errors";
 import { FetchBitrix24HttpTransport } from "@/integrations/bitrix24/http-transport";
 import type { Bitrix24IdentityClient } from "@/integrations/bitrix24/identity-client";
@@ -34,6 +36,23 @@ import type { ProfileRepository } from "@/server/profile/profile-repository";
 import { createSupabaseProfileRepository } from "@/server/profile/supabase-profile-repository";
 import type { ProfileLifecycleRepository } from "@/server/profile/profile-lifecycle-repository";
 import { createSupabaseProfileLifecycleRepository } from "@/server/profile/supabase-profile-lifecycle-repository";
+
+export const OAUTH_BROWSER_COOKIE_NAME = "__Host-task-launcher-oauth-state";
+const STATE_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+
+function oauthBrowserCookie(state: string, expiresAt: string): string {
+  return `${OAUTH_BROWSER_COOKIE_NAME}=${state}; Path=/; Expires=${new Date(expiresAt).toUTCString()}; HttpOnly; Secure; SameSite=Lax`;
+}
+
+function matchesOAuthBrowser(request: Request, state: string): boolean {
+  const values = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith(`${OAUTH_BROWSER_COOKIE_NAME}=`))
+    .map((part) => part.slice(OAUTH_BROWSER_COOKIE_NAME.length + 1));
+  if (!STATE_PATTERN.test(state) || values.length !== 1 || !STATE_PATTERN.test(values[0]!)) return false;
+  return timingSafeEqual(Buffer.from(state), Buffer.from(values[0]!));
+}
 
 const SAFE_HEADERS = {
   "Cache-Control": "no-store",
@@ -138,7 +157,14 @@ export async function handleProductionOAuthStart(
       state: issued.state,
       redirectUri: runtime.config.callbackUri,
     });
-    return new Response(null, { status: 302, headers: { ...SAFE_HEADERS, Location: location } });
+    return new Response(null, {
+      status: 302,
+      headers: {
+        ...SAFE_HEADERS,
+        Location: location,
+        "Set-Cookie": oauthBrowserCookie(issued.state, issued.transaction.expiresAt),
+      },
+    });
   } catch (error) {
     return safeFailure(error);
   }
@@ -151,7 +177,19 @@ export async function handleProductionOAuthCallback(
   const callback = new URL(request.url);
   const state = readSingleParameter(callback, "state");
   if (!state) return safeJson("invalid_request", 400);
+  if (!matchesOAuthBrowser(request, state)) return safeJson("invalid_state", 400);
 
+  const response = await completeProductionOAuthCallback(request, runtime, callback, state);
+  response.headers.append("Set-Cookie", oauthBrowserCookie("", "1970-01-01T00:00:00.000Z"));
+  return response;
+}
+
+async function completeProductionOAuthCallback(
+  request: Request,
+  runtime: ProductionOAuthRuntime,
+  callback: URL,
+  state: string,
+): Promise<Response> {
   let returnPath: string;
   try {
     const consumed = await runtime.stateService.consume(state);
