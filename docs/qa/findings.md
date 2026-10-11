@@ -2,7 +2,7 @@
 
 Статусы записей: `Open`, `Fixed`, `Rejected`. Новая проблема остается `Open`, пока код не изменен и связанный регрессионный тест не прошел. История закрытых записей не удаляется.
 
-На 2026-10-07 открыты QA-027 (OAuth browser binding), QA-028 (error-попытки) и QA-029 (dependency advisories). QA-001–QA-026 остаются закрытой историей.
+На 2026-10-11 открыты QA-028 (error-попытки) и QA-029 (dependency advisories). QA-027 исправлена; QA-001–QA-026 остаются закрытой историей.
 
 ## QA-001 — Аватар перекрывает мобильную навигацию
 
@@ -430,15 +430,17 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Дата обнаружения:** 2026-10-07
 - **Источник:** независимый аудит кода и production OAuth integration-тестов
 - **Экран:** `GET /api/bitrix24/oauth/start`, `GET /api/bitrix24/oauth/callback`
-- **Описание:** start сохраняет одноразовый state hash и возвращает redirect, но не устанавливает browser-binding cookie. Callback проверяет только существование state в общем repository; текущая cookie используется позже исключительно для session rotation. PKCE/browser binding в этом flow отсутствует.
-- **Воспроизведение:** получить state через start в браузере A; передать еще не использованный callback URL с code/state пользователя A в чистый браузер B. При успешной provider verification callback выдает B app session пользователя A. Существующие integration success-сценарии принимают callback без cookie, что подтверждает отсутствие этой проверки; live exploit на портале не выполнялся.
+- **Описание до исправления:** start сохраняет одноразовый state hash и возвращает redirect, но не устанавливает browser-binding cookie. Callback проверяет только существование state в общем repository; текущая cookie используется позже исключительно для session rotation. PKCE/browser binding в этом flow отсутствует.
+- **Воспроизведение до исправления:** получить state через start в браузере A; передать еще не использованный callback URL с code/state пользователя A в чистый браузер B. При успешной provider verification callback выдает B app session пользователя A. Существующие integration success-сценарии принимают callback без cookie, что подтверждает отсутствие этой проверки; live exploit на портале не выполнялся.
 - **Ожидаемый результат:** callback без привязки к инициировавшему браузеру отклоняется до consumption/provider/persistence; корректный вход, отказ provider, expiry, replay и session rotation остаются работоспособными.
 - **Приоритет:** Critical — закрыть до deployment
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанные решения:** DEC-020, DEC-021, DEC-035.
 - **Доказательства:** `src/server/auth/production-oauth.ts` — `handleProductionOAuthStart` и `handleProductionOAuthCallback`; `tests/integration/production-oauth-flow.test.ts` — успешный callback с `new Request` без Cookie.
 - **Основание:** [RFC 6749, раздел 10.12](https://www.rfc-editor.org/rfc/rfc6749#section-10.12) требует связать callback с browser context, а не только иметь случайный одноразовый state.
-- **Нужный regression:** два независимых cookie jar, отсутствие/несовпадение binding, отсутствие side effects, успешный callback и replay. Исправление и regression пока не реализованы.
+- **Нужный regression:** два независимых cookie jar, отсутствие/несовпадение binding, отсутствие side effects, успешный callback и replay. Исправление и regression реализованы: `tests/integration/production-oauth-flow.test.ts` — browser proof rejection, две cookie jar, success/rotation, expiry/replay/denial. 33 теста файла прошли 2026-10-11.
+
+- **Исправление:** browser-binding cookie, constant-time comparison до consumption, очистка binding cookie при совпавшем callback без удаления app session cookie; DEC-039.
 
 ## QA-028 — Неуспешная mock-попытка отсутствует в истории
 

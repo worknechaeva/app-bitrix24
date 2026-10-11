@@ -385,3 +385,13 @@
 - **Последствия:** Одновременные и последовательные повторы одного create не создают дубликаты; другой owner может использовать такое же значение ключа без доступа к чужой записи; измененный payload отклоняется. Сбой обновления списка показывает подтвержденный success и отдельное действие чтения, а ошибка transport снимает pending и сохраняет форму для безопасного явного повтора.
 - **Связанные QA-записи:** QA-023.
 - **Заменяет:** уточняет DEC-025 без изменения ownership и Directory-проверок.
+
+## DEC-039 — Browser binding production OAuth
+
+- **Дата:** 2026-10-11
+- **Статус:** Active
+- **Контекст:** Одноразовый database state не запрещал передать первый callback другому браузеру (QA-027).
+- **Решение:** Production start связывает state с browser через `__Host-task-launcher-oauth-state`, HttpOnly/Secure/SameSite=Lax, Path=/, без Domain, с expiry persistent transaction. Callback требует одну matching canonical cookie и сравнивает ее в constant time до consumption и provider/persistence.
+- **Последствия:** Чужой браузер не consuming state и не получает session; новая успешная попытка входа заменяет предыдущую незавершенную попытку того же браузера. Совпавший callback очищает binding независимо от success, denial, expiry, replay или контролируемой ошибки; success отдельно устанавливает app session. Schema, token encryption и admission не меняются.
+- **Связанные QA-записи:** QA-027.
+- **Заменяет:** уточняет DEC-021 и DEC-035.
