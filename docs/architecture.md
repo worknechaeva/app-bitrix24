@@ -207,7 +207,8 @@ Credentials не хранятся в profiles. Encryption key находится
 
 - Каждая явная попытка создает отдельную `task_submissions` и новый idempotency key.
 - `operation_status` принимает `pending`, `success`, `error`, `unknown`.
-- Timeout дает `unknown`; автоматический retry запрещен; ручной retry является новой попыткой.
+- Timeout дает `unknown`; автоматический retry запрещен; ручной retry после error/unknown является новой попыткой с новым ключом.
+- Mock error после вызова интеграции сохраняется с actor и safe metadata. Cached/in-flight replay возвращает прежний outcome без нового вызова. Ошибки валидации и недоступный проект до вызова клиента не создают history record; production disabled client не создает mock-попыток.
 - В development/test runtime cache хранится в едином process-wide server-only store, доступном Server Actions и Server Components, и по idempotency key дополнительно связан с actor profile, поэтому чужой actor не может получить cached или in-flight результат.
 - Mock fixtures также содержат автора попытки. Server Components главной страницы и `/submissions` получают profile и актуальную роль из `requireApplicationSession`, передают их actor-aware service и получают уже отфильтрованные записи; URL и browser payload не участвуют в выборе identity или роли.
 - Editor читает собственную историю, administrator — общую.

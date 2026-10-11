@@ -451,10 +451,11 @@ QA-019 закрыта прямым integration-тестом обеих адми�
 - **Воспроизведение:** отправить корректную форму с `mockScenario=error`, затем открыть историю; записи с ее idempotency key нет.
 - **Ожидаемый результат:** принятая интеграционная попытка сохраняется с `operation_status=error`, actor и безопасными metadata; replay не создает новый внешний вызов и не возвращает success. Ошибки валидации до начала операции должны рассматриваться отдельно.
 - **Приоритет:** High
-- **Статус:** Open
+- **Статус:** Fixed
 - **Связанные решения:** DEC-013, DEC-027.
 - **Доказательства:** `src/server/services/create-task.ts` — `executeCreate` catch и cached outcome; текущий тест `returns a safe message for an integration error` не проверяет историю.
-- **Нужный regression:** запись error, actor isolation, cached error outcome и один вызов клиента при replay. Исправление пока не реализовано; persistent submissions также остаются отдельным незавершенным slice.
+- **Исправление:** безопасная error-запись сохраняется с actor и metadata без внешнего ответа, task ID или URL. Replay возвращает прежнюю ошибку без повторного вызова; валидация и недоступный проект не создают попытку. История показывает «Ошибка отправки», явный повтор из формы создает новую попытку с новым ключом. Persistent submissions остаются отдельным slice.
+- **Regression:** `tests/integration/create-task.test.ts` — concurrency/replay, один вызов, actor isolation, safe metadata и preflight errors; 11 тестов прошли 2026-10-11. `tests/e2e/task-flow.spec.ts` — error history и успешная ручная повторная отправка на desktop, iPhone и Android.
 
 ## QA-029 — Production dependency graph содержит security advisories
 

@@ -32,7 +32,16 @@ function CreatedAt({ value }: { value: string }) {
   return <time dateTime={value}>{formatted}</time>;
 }
 
-function StatusBadge({ status }: { status: TaskStatus }) {
+function StatusBadge({
+  status,
+  operationStatus,
+}: {
+  status: TaskStatus;
+  operationStatus: SubmissionRecord["operationStatus"];
+}) {
+  if (operationStatus === "error") {
+    return <Badge variant="destructive">Ошибка отправки</Badge>;
+  }
   return (
     <Badge variant="outline" className={statusClasses[status]}>
       {TASK_STATUS_LABELS[status]}
@@ -92,7 +101,10 @@ export function SubmissionHistory({ submissions, projects }: SubmissionHistoryPr
                       {submission.bitrixTaskId ? `#${submission.bitrixTaskId}` : "—"}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusBadge status={submission.taskStatus} />
+                      <StatusBadge
+                        status={submission.taskStatus}
+                        operationStatus={submission.operationStatus}
+                      />
                     </td>
                     <td className="text-muted-foreground px-4 py-3 text-xs">
                       <CreatedAt value={submission.createdAt} />
@@ -109,7 +121,10 @@ export function SubmissionHistory({ submissions, projects }: SubmissionHistoryPr
                 <CardContent className="space-y-2 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-medium">{submission.title}</p>
-                    <StatusBadge status={submission.taskStatus} />
+                    <StatusBadge
+                      status={submission.taskStatus}
+                      operationStatus={submission.operationStatus}
+                    />
                   </div>
                   <p className="text-muted-foreground text-sm">
                     {submission.projectName} · {submission.responsibleName}

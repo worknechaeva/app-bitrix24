@@ -108,6 +108,12 @@ export async function createTask(input: TaskCreateRequest, actor: ProjectActor):
     if (existing.actorProfileId !== actor.profileId) {
       return { status: "error", message: "Не удалось создать задачу. Попробуйте позже." };
     }
+    if (existing.submission.operationStatus === "error") {
+      return {
+        status: "error",
+        message: existing.submission.message ?? "Не удалось создать задачу. Попробуйте позже.",
+      };
+    }
     return existing.submission.operationStatus === "unknown"
       ? {
           status: "unknown",
@@ -211,7 +217,24 @@ async function executeCreate(data: TaskCreateRequest, actor: ProjectActor): Prom
       submissions.set(data.idempotencyKey, { actorProfileId: actor.profileId, submission });
       return { status: "unknown", submission, message: submission.message! };
     }
-    return { status: "error", message: "Не удалось создать задачу. Попробуйте позже." };
+    const message = "Не удалось создать задачу. Попробуйте позже.";
+    const submission: SubmissionRecord = {
+      id: crypto.randomUUID(),
+      idempotencyKey: data.idempotencyKey,
+      projectId: project.id,
+      projectName: project.name,
+      title: data.title.trim(),
+      responsibleName: getEmployeeName(responsibleId),
+      deadline: data.deadline || undefined,
+      operationStatus: "error",
+      taskStatus: "unknown",
+      createdAt: new Date().toISOString(),
+      message,
+      files: data.files.map((file) => ({ ...file })),
+      requestPayloadSanitized: sanitizedPayload,
+    };
+    submissions.set(data.idempotencyKey, { actorProfileId: actor.profileId, submission });
+    return { status: "error", message };
   }
 }
 

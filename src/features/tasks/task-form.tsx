@@ -80,7 +80,9 @@ export function TaskForm({
     setFileError(undefined);
     try {
       const attemptValues =
-        outcome?.status === "unknown" ? { ...values, idempotencyKey: crypto.randomUUID() } : values;
+        outcome?.status === "unknown" || outcome?.status === "error"
+          ? { ...values, idempotencyKey: crypto.randomUUID() }
+          : values;
       if (attemptValues.idempotencyKey !== values.idempotencyKey) {
         form.setValue("idempotencyKey", attemptValues.idempotencyKey);
       }
